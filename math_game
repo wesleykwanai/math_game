@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>除法出擊！小四除法(一)</title>
+<style>
+:root{--bg:#101828;--card:#1b2540;--ok:#2ec4b6;--no:#ff6b6b;--ac:#ffd166;--tx:#eef2ff;--mu:#8fa0c0}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);
+  font-family:"DFKai-SB","標楷體","BiauKai","KaiTi",system-ui,sans-serif;
+  display:flex;justify-content:center;align-items:center;padding:12px}
+#app{width:min(720px,100%)}
+h1{margin:0 0 8px;font-size:clamp(20px,4vw,30px);color:var(--ac);text-align:center}
+.bar{display:flex;gap:8px;justify-content:center;align-items:center;font-size:18px;margin-bottom:8px;flex-wrap:wrap}
+.pill{background:var(--card);border-radius:999px;padding:4px 14px}
+#q{background:var(--card);border-radius:16px;padding:18px;text-align:center;margin:10px 0}
+#qtext{font-size:clamp(24px,5.5vw,40px);line-height:1.5}
+#hint{color:var(--mu);font-size:17px;margin-top:8px;min-height:24px}
+#opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#opts button{font:inherit;font-size:clamp(20px,4.5vw,28px);padding:14px 6px;border:0;border-radius:14px;
+  background:var(--card);color:var(--tx);cursor:pointer;min-height:64px;touch-action:manipulation}
+#opts button:hover{background:#2a385c}
+#opts button:disabled{opacity:.55;cursor:default}
+.g{border:3px solid var(--ok)!important}.r{border:3px solid var(--no)!important}
+#time{height:8px;background:var(--card);border-radius:99px;overflow:hidden;margin-bottom:10px}
+#time i{display:block;height:100%;background:var(--ac);width:100%}
+#pop{text-align:center;height:28px;font-size:20px;color:var(--ac)}
+#over,#start{text-align:center}
+.hide{display:none}
+#bar{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+#bar span{width:18px;height:14px;background:#2a385c;border-radius:3px}
+#bar span.y{background:var(--ok)}#bar span.n{background:var(--no)}
+button.big{font:inherit;font-size:24px;padding:12px 30px;border:0;border-radius:14px;background:var(--ac);color:#1b2540;cursor:pointer}
+small{color:var(--mu)}
+#mark{font-size:clamp(60px,16vw,110px);color:var(--ac);line-height:1.1;margin:10px 0}
+#wrong{text-align:left;max-height:34vh;overflow:auto;margin:12px 0;padding:0 4px}
+#wrong div{background:var(--card);border-radius:10px;padding:7px 10px;margin-bottom:6px;font-size:17px}
+</style>
+</head>
+<body>
+<div id="app">
+<h1>除法出擊！小四除法（一）</h1>
+<div id="start">
+  <p>🍬 題庫共 <b>20 題</b>，每次隨機抽 <b>10 題</b>考。答完可以加考多 10 題。<br>答對會得分，連對有 <b>連擊</b> 加分！</p>
+  <p><small>內容：整十數除法、無餘數除法、有餘數除法、分佈圖、逆向思考</small></p>
+  <button class="big" onclick="startGame()">開始</button>
+</div>
+<div id="play" class="hide">
+  <div class="bar">
+    <span class="pill">第 <b id="num">1</b> / <b id="tot">10</b> 題</span>
+    <span class="pill">答對 <b id="ok">0</b></span>
+    <span class="pill">連擊 <b id="combo">0</b></span>
+  </div>
+  <div id="bar"></div>
+  <div id="time"><i></i></div>
+  <div id="q"><div id="qtext"></div><div id="hint"></div></div>
+  <div id="pop"></div>
+  <div id="opts"></div>
+</div>
+<div id="over" class="hide"></div>
+</div>
+<script>
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const uni=a=>[...new Set(a)];
+const SEC=15,PER=10,BANK=20;   // PER=每次考幾多題，BANK=題庫總題數（可加考）
+// 每題回傳 {text, ans, hint}；ans 一律為字串
+function qRound(){const b=uni([10,20,30,40,50])[R(0,4)],q=R(2,9);return{text:`${b*q} ÷ ${b} = ?`,ans:String(q)}}
+function qExact(){const b=R(2,9),q=R(2,12);return{text:`${b*q} ÷ ${b} = ?`,ans:String(q)}}
+function qRemain(){const b=R(3,9),q=R(3,10),r=R(1,b-1),a=b*q+r,ans=`商${q} 餘${r}`;
+  return{text:`${a} ÷ ${b} = ?（寫「商_ 餘_」）`,ans,hint:`餘數一定要細過除數 ${b}`}}
+function qBar(){const b=R(3,9),q=R(2,9),t=b*q;
+  return{text:`有 ${t} 顆糖，平均分給 ${b} 個小朋友，每人分到幾多顆？`,ans:String(q),hint:`${t} ÷ ${b}`}}
+function qBack(){const b=R(2,9),q=R(3,12);return{text:`${b} × ${q} = ${b*q}，所以 ${b*q} ÷ ${b} = ?`,ans:String(q)}}
+const TYPES=[qRound,qExact,qRemain,qBar,qBack];
+const key=q=>q.text+q.ans;
+// 題庫：n 題（同一次考試內唔會有重複題），每次開始／加考都重新抽
+function makeBank(n){
+  const b=[],seen=new Set();let guard=n*40;
+  while(b.length<n&&guard-->0){const q=TYPES[b.length%TYPES.length]();const k=key(q);
+    if(!seen.has(k)){seen.add(k);b.push(q)}}
+  for(;b.length<n;){const q=TYPES[b.length%TYPES.length]();seen.add(key(q));b.push(q)} // 抽極耐都撞要加質就補質
+  return b.sort(()=>Math.random()-.5);
+}
+// 4 個不重複選項：3 個干擾 + 答案；有餘數題的干擾亦要符合「餘數<除數」，唔會教錯
+function opts(q){
+  const ans=q.ans,rm=ans.match(/^商(\d+) 餘(\d+)$/),d=q.text.match(/^(\d+) ÷ (\d+)/);
+  const pool=[];
+  if(rm){const n=+rm[1],b=d?+d[2]:9,r1=R(0,b-1);
+    pool.push(`商${n+1} 餘${r1}`,`商${n-1} 餘${r1?0:R(0,b-1)}`,`商${n} 餘${(+rm[2]+1)%b}`);
+  }else{const n=+ans;pool.push(...[n+1,n+2,n-1,n-2,n+10,n-10].filter(v=>v>=0).map(String))}
+  return uni(pool.filter(v=>v!==ans)).slice(0,3).concat(ans).sort(()=>Math.random()-.5);
+}
+let S;
+function startGame(){S={q:makeBank(PER),i:0,c:0,ok:0,s:0,wrong:[],extra:0,done:PER};
+  document.getElementById('start').classList.add('hide');
+  document.getElementById('play').classList.remove('hide');
+  drawDots();next()}
+function drawDots(){document.getElementById('bar').innerHTML='<span></span>'.repeat(S.done);
+  document.getElementById('tot').textContent=S.done}
+function next(){
+  const q=S.q[S.i],bar=document.querySelector('#time i');
+  const box=document.getElementById('opts');box.innerHTML='';
+  document.getElementById('qtext').textContent=q.text;
+  document.getElementById('hint').textContent=q.hint||'';document.getElementById('pop').textContent='';
+  opts(q).forEach(a=>{const b=document.createElement('button');b.textContent=a;
+    b.onclick=()=>answer(a,b,q);box.appendChild(b)});
+  document.getElementById('num').textContent=S.i+1;
+  document.getElementById('ok').textContent=S.ok;
+  document.getElementById('combo').textContent=S.c;
+  S.t=SEC;bar.style.width='100%';
+  clearInterval(S.id);S.id=setInterval(()=>{bar.style.width=(S.t/SEC*100)+'%';
+    if(--S.t<=0){clearInterval(S.id);answer(null,null,q)}},1000);
+}
+function answer(pick,btn,q){
+  clearInterval(S.id);
+  document.querySelectorAll('#opts button').forEach(b=>b.disabled=true);
+  const pop=document.getElementById('pop'),ok=pick===q.ans;
+  const dot=document.querySelectorAll('#bar span')[S.i];
+  if(ok){S.ok++;S.s+=(++S.c)*(1+Math.floor(S.c/3));dot.className='y';
+    pop.textContent='✅ +'+(S.c>3?S.c+'連擊!':S.c)}
+  else{S.c=0;dot.className='n';S.wrong.push(q);
+    pop.textContent=(pick===null?'⏰ 超時！':'❌')+' 正確係：'+q.ans}
+  if(btn)btn.classList.add(ok?'g':'r');
+  if(!ok){const w=[...document.querySelectorAll('#opts button')].find(b=>b.textContent===q.ans);if(w)w.classList.add('g')}
+  document.getElementById('ok').textContent=S.ok;
+  document.getElementById('combo').textContent=S.c;
+  S.i++;
+  setTimeout(()=>{if(S.i>=S.done)end();else next()},ok?600:1600);
+}
+function grade(p){return p>=90?['🏆','優']:p>=75?['😃','良']:p>=60?['🙂','中']:['💪','加油']}
+function end(){
+  clearInterval(S.id);
+  const n=S.done,p=Math.round(S.ok/n*100),[e,g]=grade(p);
+  // 紀錄存百分比：加考後分母變 20，存百分比先唔會同之前的 10 題紀錄打架
+  const best=+(localStorage.p4div||0);if(p>best)localStorage.p4div=p;
+  document.getElementById('play').classList.add('hide');
+  const o=document.getElementById('over');o.classList.remove('hide');
+  o.innerHTML=`<h2>${e} 等第：${g}</h2><div id="mark">${S.ok}/${n}</div>
+   <p style="font-size:24px">答對 ${S.ok} 題，答錯 ${n-S.ok} 題　（${p}%）</p>
+   <p><small>最高紀錄 ${Math.max(best,p)}%　｜　遊戲分數 ${S.s}</small></p>
+   ${S.wrong.length?`<div id="wrong"><b>要溫習嘅題目（${S.wrong.length} 題）</b>`+
+     S.wrong.map(q=>`<div>${q.text}<br>✅ 答案：<b>${q.ans}</b></div>`).join('')+'</div>':'<p>💯 全部答對，太厲害！</p>'}
+   <button class="big" onclick="location.reload()">再考一次</button>`+
+   (n<BANK?`<button class="big" onclick="more()">加考多 ${PER} 題 ▶</button>`:'');
+}
+// 加考：答過嘅題唔會再出現，最多考齊題庫 ${BANK} 題
+function more(){
+  const used=new Set(S.q.slice(0,S.i).map(key));
+  const rest=makeBank(BANK).filter(q=>!used.has(key(q))).slice(0,PER);
+  S.q=S.q.concat(rest);S.done+=rest.length;S.extra++;
+  document.getElementById('over').classList.add('hide');
+  document.getElementById('play').classList.remove('hide');
+  drawDots();next();
+}
+// ---- 自檢：?test 開啟時跑，斷言題庫 / 選項 / 計分正確 ----
+function selfTest(){
+  const A=(c,m)=>{if(!c)throw new Error('FAIL: '+m)};
+  for(const g of TYPES)for(let i=0;i<400;i++){const q=g(),o=opts(q),rm=q.ans.match(/^商(\d+) 餘(\d+)$/);
+    A(o.length===4&&o.includes(q.ans),'選項要有4個且含答案');
+    A(new Set(o).size===4,'選項不可重複');
+    A(/^\d+$/.test(q.ans)||rm,'答案格式: '+q.ans);
+    A((rm?+rm[1]:+q.ans)>=0,'答案唔可以係負數');
+    const d=q.text.match(/(\d+) ÷ (\d+)/);
+    if(d){const a=+d[1],b=+d[2];A(b>0&&a>0,'被除數/除數唔可以係0');
+      if(rm){A(+rm[2]<b,'餘數必須細過除數: '+q.text);A(b*(+rm[1])+ +rm[2]===a,'商餘算錯: '+q.text)}
+      else A(a/b===+q.ans&&a%b===0,'除法答案錯: '+q.text);}
+    if(q.hint)A(q.hint.length>0,'提示唔可以係空');}
+  for(let t=0;t<300;t++){const bk=makeBank(BANK); // 題庫檢查
+    A(bk.length===BANK,'題庫要 '+BANK+' 題');
+    A(new Set(bk.map(key)).size===BANK,'題庫內有重複題');
+    for(const q of bk){const o=opts(q);A(o.length===4&&o.includes(q.ans),'庫內選項錯');A(new Set(o).size===4,'庫內選項重複');}}
+  // 抽題：每次一份 PER 題，加考亦唔會抽中答過嘅題（同一份 20 題內輪流抽到全 20）
+  for(let t=0;t<200;t++){let q=makeBank(PER),seen=new Set(q.map(key));
+    A(q.length===PER&&seen.size===PER,'首輪要 '+PER+' 題不重複');
+    while(q.length<BANK){const rest=makeBank(BANK).filter(x=>!seen.has(key(x))).slice(0,PER);
+      A(rest.length>0,'加考抽唔到新題');rest.forEach(x=>{seen.add(key(x));q=q.concat([x])})}
+    A(seen.size===BANK,'加考後應集齊題庫 '+BANK+' 題');}
+  // 計分：答對率 → 等第
+  for(let k=0;k<=BANK;k++){const pc=Math.round(k/BANK*100);
+    A(pc>=0&&pc<=100&&grade(pc)[1].length>0,'計分錯: '+k);}
+  A(grade(100)[1]==='優'&&grade(89)[1]==='良'&&grade(74)[1]==='中'&&grade(59)[1]==='加油','等第界線錯');
+  A(BANK===20&&PER===10&&SEC>0,'份數設定錯');
+  console.log('PASS 全部自檢通過');
+  document.title='TEST OK';
+  document.body.insertAdjacentHTML('afterbegin','<h2 style="color:#2ec4b6;text-align:center">✅ 自檢通過</h2>');
+}
+if(location.search.includes('test'))selfTest();
+</script>
+</body>
+</html>
+
+# 小四除法（一）練習遊戲
+
+純前端 HTML 遊戲：20 題題庫，每次隨機抽 10 題考，答完可加考多 10 題（唔會重複）。
+
+**直接用瀏覽器打開 `index.html` 就可以玩**（唔使安裝、離線都行）。
+
+## 玩法
+
+- 題庫 20 題，每次隨機抽 10 題
+- 答完可以「加考多 10 題」，最多集齊 20 題，唔會重複之前答過的題
+- 每題 15 秒倒數，答完顯示總分、等第同要溫習嘅題目
+- 題型：整十數除法、無餘數除法、有餘數除法、分佈圖、逆向思考
+
+## 自檢
+
+開 `index.html?test` 會跑內建自我檢查（題庫無重複、加考抽唔到重複題、答案與餘數驗算、等第界線）。
