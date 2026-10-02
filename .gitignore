@@ -1,0 +1,6 @@
+# 副本檔：內容同 index.html 相同（只多咗尾段 markdown），唔使上傳
+remote_mg.html
+
+# 系統檔
+.DS_Store
+Thumbs.db
