@@ -15,6 +15,14 @@
 
 開 `index.html?test` 會跑內建自我檢查（題庫無重複、加考抽唔到重複題、答案與餘數驗算、等第界線）。
 
+有 Node.js 嘅話可以喺終端機跑同一套斷言，唔使開瀏覽器：
+
+```bash
+node tools/run-selftest.js index.html
+```
+
+輸出 `PASS 全部自檢通過` 就代表冇問題。
+
 ## 檔案
 
 | 檔案 | 說明 |
