@@ -9,23 +9,30 @@
 - 題庫 20 題，每次隨機抽 10 題
 - 答完可以「加考多 10 題」，最多集齊 20 題，唔會重複之前答過的題
 - 每題 15 秒倒數，答完顯示總分、等第同要溫習嘅題目
-- 題型：整十數除法、無餘數除法、有餘數除法、分佈圖、逆向思考
+- 共 10 種題型：整十數除法、無餘數除法、有餘數除法、分佈圖、逆向思考、兩位數÷一位數、三位數÷一位數、兩位數乘兩位數逆向、估算
 
 ## 自檢
 
 開 `index.html?test` 會跑內建自我檢查（題庫無重複、加考抽唔到重複題、答案與餘數驗算、等第界線）。
 
-有 Node.js 嘅話可以喺終端機跑同一套斷言，唔使開瀏覽器：
+有 Node.js 嘅話可以喺終端機跑：
 
 ```bash
-node tools/run-selftest.js index.html
+node tools/run-selftest.js index.html   # 內建斷言（?test 同一套）
+node tools/audit-questions.js           # 窮舉全部可能題目，驗算數學正確性
+node tools/test-flow.js                 # 無頭模擬打完整場遊戲，檢查畫面砌得啱
 ```
 
-輸出 `PASS 全部自檢通過` 就代表冇問題。
+`audit-questions.js` 會窮舉每種題型**所有可能**嘅組合（唔係隨機抽樣），確認每條題嘅
+除法正確、餘數細過除數、選項 4 個唔重複又啱係數學上合理，而且所有題型之間冇重覆題目。
+改完題型記得跑一次。
 
 ## 檔案
 
 | 檔案 | 說明 |
 | --- | --- |
 | `index.html` | 遊戲本體（唯一需要嘅檔案） |
+| `tools/run-selftest.js` | 喺 Node 跑內建 `?test` 斷言 |
+| `tools/audit-questions.js` | 窮舉所有可能題目，驗算數學正確性 |
+| `tools/test-flow.js` | 無頭模擬打完整場遊戲 |
 | `.gitignore` | 排除本地嘅 `remote_mg.html` 副本（內容同 `index.html` 相同） |
