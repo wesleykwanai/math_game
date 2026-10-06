@@ -1,11 +1,14 @@
 // Exhaustive audit of every question the game can ever generate.
-// Enumerates the FULL parameter space of all 5 generators (not random samples)
+// Enumerates the FULL parameter space of every generator (not random samples)
 // and checks the maths, the answer format, and the distractor options.
+// Usage: node tools/audit-questions.js [path/to/index.html]
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const target = process.argv[2] || path.join(__dirname, '..', 'index.html');
+const html = fs.readFileSync(target, 'utf8');
 const src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+console.log(`auditing: ${target}`);
 
 // ---- DOM stub so the game script runs ----
 const stubEl = () => ({
@@ -165,6 +168,16 @@ for (let t = 0; t < 200; t++) {
 console.log(`\n  distinct questions in whole game: ${seen.size}`);
 console.log(`  questions checked (incl. 40 option samples each): ${checked}`);
 console.log(`  bank built 200x with no duplicate/size errors`);
+
+// The intro screen advertises a question-pool size; keep it honest.
+const shown = html.match(/總共有 <b>(\d+)<\/b>/);
+if (!shown) {
+  bad('could not find the advertised question-pool count in index.html');
+} else if (+shown[1] !== seen.size) {
+  bad(`intro screen says ${shown[1]} questions but the game generates ${seen.size}`);
+} else {
+  console.log(`  intro screen pool count (${shown[1]}) matches reality`);
+}
 
 console.log('');
 if (problems.length) {
