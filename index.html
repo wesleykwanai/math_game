@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>除法出擊！小四除法(一)</title>
+<title>乘法出擊！小四乘法（二）</title>
 <style>
 :root{--bg:#101828;--card:#1b2540;--ok:#2ec4b6;--no:#ff6b6b;--ac:#ffd166;--tx:#eef2ff;--mu:#8fa0c0}
 *{box-sizing:border-box}
@@ -40,10 +40,10 @@ small{color:var(--mu)}
 </head>
 <body>
 <div id="app">
-<h1>除法出擊！小四除法（一）</h1>
+<h1>乘法出擊！小四乘法（二）4N1</h1>
 <div id="start">
-  <p>🍬 每次隨機抽 <b>10 題</b>考，答完可以加考多 10 題（同一場最多 20 題，唔會重複）。<br>題目由 10 種題型隨機組合，總共有 <b>5196</b> 條唔同題目。<br>答對會得分，連對有 <b>連擊</b> 加分！</p>
-  <p><small>內容：整十數除法、無餘數除法、有餘數除法、分佈圖、逆向思考、兩位數÷一位數、三位數÷一位數、兩位數乘兩位數逆向、估算</small></p>
+  <p>🍬 每次隨機抽 <b>10 題</b>考，答完可以加考多 10 題（同一場最多 20 題，唔會重複）。<br>題目由 9 種題型隨機組合，總共有 <b>137385</b> 條唔同題目。<br>答對會得分，連對有 <b>連擊</b> 加分！</p>
+  <p><small>內容依《學習內容補充文件》4N1 乘法（二）：兩位數 × 兩位數、三位數 × 兩位數（含進位）、<br>交換性質、結合性質、估算、解應用題。</small></p>
   <button class="big" onclick="startGame()">開始</button>
 </div>
 <div id="play" class="hide">
@@ -62,32 +62,54 @@ small{color:var(--mu)}
 </div>
 <script>
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick2=()=>R(1,9)*10+R(1,9);           // 隨機兩位數（十位、位都唔會係 0）
+const pick3=()=>R(1,9)*100+R(0,9)*10+R(0,9); // 隨機三位數
 const uni=a=>[...new Set(a)];
 const $=id=>document.getElementById(id);
 // 用 DOM 節點砌畫面，唔用 innerHTML 插字串（避免 XSS 風險）
 function el(t,cls,txt){const e=document.createElement(t);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 function bigBtn(txt,fn){const b=el('button','big',txt);b.onclick=fn;return b}
 const SEC=15,PER=10,BANK=20;   // PER=每次考幾多題，BANK=題庫總題數（可加考）
-// 每題回傳 {text, ans, hint}；ans 一律為字串
-function qRound(){const b=uni([10,20,30,40,50])[R(0,4)],q=R(2,9);return{text:`${b*q} ÷ ${b} = ?`,ans:String(q)}}
-function qExact(){const b=R(2,9),q=R(2,9);return{text:`${b*q} ÷ ${b} = ?`,ans:String(q)}}
-function qRemain(){const b=R(3,9),q=R(3,10),r=R(1,b-1),a=b*q+r,ans=`商${q} 餘${r}`;
-  return{text:`${a} ÷ ${b} = ?（寫「商_ 餘_」）`,ans,hint:`餘數一定要細過除數 ${b}`}}
-function qBar(){const b=R(3,9),q=R(2,9),t=b*q;
-  return{text:`有 ${t} 顆糖，平均分給 ${b} 個小朋友，每人分到幾多顆？`,ans:String(q),hint:`${t} ÷ ${b}`}}
-function qBack(){const b=R(2,9),q=R(3,12);return{text:`${b} × ${q} = ${b*q}，所以 ${b*q} ÷ ${b} = ?`,ans:String(q)}}
-// --- 新增題型（小四程度）：兩位數÷一位數、三位數÷一位數、兩位數乘兩位數逆向、估算 ---
-// step = 干擾項嘅間距（估算題用 10，令選項全部係十位數）；approx = 答案唔係精確商
-function qTwo(){const b=R(3,9),q=R(11,Math.floor(99/b));return{text:`${b*q} ÷ ${b} = ?`,ans:String(q),hint:`兩位數 ÷ 一位數，商係兩位數，由最高位開始分`}}
-function qBig(){const b=R(2,9),lo=Math.ceil(120/b),hi=Math.floor(999/b),q=R(lo,hi);
-  return{text:`${b*q} ÷ ${b} = ?`,ans:String(q),hint:`三位數 ÷ 一位數，先估商，再睇剩低幾多要分配`}}
-function qBigRemain(){const b=R(3,9),q=R(11,40),r=R(1,b-1),a=b*q+r;
-  return{text:`${a} ÷ ${b} = ?（寫「商_ 餘_」）`,ans:`商${q} 餘${r}`,hint:`餘數一定要細過除數 ${b}`}}
-function qInvBig(){const b=R(11,29),q=R(11,29);return{text:`${b} × ${q} = ${b*q}，所以 ${b*q} ÷ ${b} = ?`,ans:String(q),hint:`${b*q} ÷ ${b} 就係搵返 ${q}`}}
-function qEstimate(){const b=R(3,9),q=R(12,49),r=R(0,b-1),a=b*q+r,est=Math.round(a/b/10)*10;
-  return{text:`估算：${a} ÷ ${b} ≈ ?（取最接近的十位）`,ans:String(est),approx:true,step:10,
-    hint:`將 ${a} 睇成最接近嘅百位，再 ÷ ${b}，最後取最接近嘅十位`}}
-const TYPES=[qRound,qExact,qRemain,qBar,qBack,qTwo,qBig,qBigRemain,qInvBig,qEstimate];
+// ===== 4N1 乘法（二）題型。每題回傳 {text, ans, hint}；ans 一律為數字字串 =====
+// step = 干擾項間距：答案越大，四個選項要拉得越開，否則四位數答案嘅選項會黐埋一齊
+const step4=n=>n<100?1:n<1000?10:n<10000?100:1000;
+// --- 4N1.1 進行乘法運算：兩位數 × 兩位數、三位數 × 兩位數，當中須包括進位 ---
+function qTwo(){const a=pick2(),b=pick2(),p=a*b;
+  return{text:`${a} × ${b} = ?`,ans:String(p),step:step4(p),
+    hint:`拆兩步做：${a} × ${b%10}，同 ${a} × ${(b-b%10)/10} 個十，加埋`}}
+function qCarry(){const b=R(3,9),u=R(Math.ceil(10/b),9),a=R(1,9)*10+u,p=a*b;
+  return{text:`${a} × ${b} = ?`,ans:String(p),step:step4(p),
+    hint:`個位 ${u} × ${b} = ${u*b}，要寫 ${u*b%10}，兼 ${Math.floor(u*b/10)} 入十位`}}
+function qBig(){const a=pick3(),b=pick2(),p=a*b;
+  return{text:`${a} × ${b} = ?`,ans:String(p),step:step4(p),
+    hint:`拆兩步做：${a} × ${b%10}，同 ${a} × ${(b-b%10)/10} 個十，加埋`}}
+// --- 4N1.2 交換性質、結合性質（課程不要求學生用「交換性質」「結合性質」呢兩個詞） ---
+function qSwap(){const a=R(11,39),b=R(3,9),p=a*b;
+  return{text:`${a} × ${b} = ${p}，寫出 ${b} × ${a} = ?`,ans:String(p),step:step4(p),
+    hint:`兩個數對調位置，積唔會變`}}
+// 課程闡釋示例：25 × 53 × 4 ＝ 53 × (25 × 4) ＝ 5300
+function qCombine(){const r=uni([15,25,35,45])[R(0,3)],m=pick2(),p=m*r*4;
+  return{text:`${r} × ${m} × 4 = ?`,ans:String(p),step:step4(p),hint:`先搵 ${r} × 4 = ${r*4}，再乘 ${m}`}}
+// --- 4N1.3 注：學生須認識如何估計計算結果 ---
+function qEstimate(){const a=pick2(),b=pick2(),ea=Math.round(a/10)*10,eb=Math.round(b/10)*10,p=ea*eb;
+  return{text:`估算：${a} × ${b} ≈ ?（兩個數各取最接近嘅十位）`,ans:String(p),approx:true,step:step4(p),
+    hint:`${a} 取做 ${ea}，${b} 取做 ${eb}，再相乘`}}
+// 結合性質 + 估算：先將兩個數取整十，再乘埋 4（對應課程闡釋的 25 × 53 × 4 例子）
+function qEstimate3(){const a=pick2(),b=pick2(),ea=Math.round(a/10)*10,eb=Math.round(b/10)*10,p=ea*eb*4;
+  return{text:`估算：${a} × ${b} × 4 ≈ ?（兩個數各取最接近嘅十位）`,ans:String(p),approx:true,step:step4(p),
+    hint:`${a} 取做 ${ea}，${b} 取做 ${eb}，再乘 4`}}
+function qWord(){const a=pick2(),b=pick2(),p=a*b,k=R(0,3);
+  const text=[`${a} 張卡，每張寫咗 ${b} 個字，合共有幾多個字？`,
+             `1 盒有 ${a} 支筆，${b} 盒共有幾多支筆？`,
+             `${b} 排每排坐 ${a} 人，全部坐滿共坐咗幾多人？`,
+             `一件玩具 ${b} 元，買 ${a} 件要幾多元？`][k];
+  return{text,ans:String(p),step:step4(p),hint:`列乘法直式：${a} × ${b}`}}
+// 逆向思考：乘除關係，搵返因數
+function qMissing(){const b=pick2(),a=R(2,9),p=a*b;
+  return{text:`${b} × ? = ${p}，問號係幾多？`,ans:String(a),
+    hint:`倒轉諗：${p} 可以分成幾多份 ${b}？`}}
+// 9 種題型（唔重複填 10 個：makeBank 本身會去重，唔使為咗湊數而重複一個题型）
+const TYPES=[qTwo,qCarry,qBig,qSwap,qCombine,qEstimate,qEstimate3,qWord,qMissing];
 const key=q=>q.text+q.ans;
 // 題庫：n 題（同一次考試內唔會有重複題），每次開始／加考都重新抽
 function makeBank(n){
@@ -97,13 +119,11 @@ function makeBank(n){
   for(;b.length<n;){const q=TYPES[b.length%TYPES.length]();seen.add(key(q));b.push(q)} // 抽極耐都撞要加質就補質
   return b.sort(()=>Math.random()-.5);
 }
-// 4 個不重複選項：3 個干擾 + 答案；有餘數題的干擾亦要符合「餘數<除數」，唔會教錯
+// 4 個不重複選項：3 個干擾（答案 ±step、±2step、±3step）+ 答案
+// step 隨答案位數放大，四位數答案嘅選項先拉得開，唔會黐埋一齊
 function opts(q){
-  const ans=q.ans,rm=ans.match(/^商(\d+) 餘(\d+)$/),d=q.text.match(/^(\d+) ÷ (\d+)/),st=q.step||1;
-  const pool=[];
-  if(rm){const n=+rm[1],b=d?+d[2]:9,r1=R(0,b-1);
-    pool.push(`商${n+1} 餘${r1}`,`商${n-1} 餘${r1?0:R(0,b-1)}`,`商${n} 餘${(+rm[2]+1)%b}`);
-  }else{const n=+ans;pool.push(...[n+st,n+2*st,n-st,n-2*st,n+10*st,n-10*st].filter(v=>v>=0).map(String))}
+  const ans=q.ans,n=+ans,st=q.step||1,pool=[];
+  for(const v of [n+st,n+2*st,n-st,n-2*st,n+3*st,n-3*st])if(v>=0)pool.push(String(v));
   return uni(pool.filter(v=>v!==ans)).slice(0,3).concat(ans).sort(()=>Math.random()-.5);
 }
 let S;
@@ -149,7 +169,7 @@ function end(){
   clearInterval(S.id);
   const n=S.done,p=Math.round(S.ok/n*100),[e,g]=grade(p);
   // 紀錄存百分比：加考後分母變 20，存百分比先唔會同之前的 10 題紀錄打架
-  const best=+(localStorage.p4div||0);if(p>best)localStorage.p4div=p;
+  const best=+(localStorage.p4mul||0);if(p>best)localStorage.p4mul=p;
   $('play').classList.add('hide');
   const o=$('over');o.classList.remove('hide');o.textContent='';
   o.appendChild(el('h2',null,`${e} 等第：${g}`));
@@ -181,20 +201,37 @@ function more(){
   $('play').classList.remove('hide');
   drawDots();next();
 }
-// ---- 自檢：?test 開啟時跑，斷言題庫 / 選項 / 計分正確 ----
+// ---- 由題目文字反推正確答案（自檢同 audit 工具共用；應用題唔能由文字反推，回 null） ----
+function expect(q){
+  let m=q.text.match(/^(\d+) × (\d+) × (\d+) = \?$/);            // 結合性質
+  if(m)return [+m[1]*+m[2]*+m[3],`${m[1]} × ${m[2]} × ${m[3]}`];
+  m=q.text.match(/^(\d+) × \? = (\d+)/);                        // 逆向思考：搵返因數
+  if(m)return [+m[2]/+m[1],`${m[2]} ÷ ${m[1]}`];
+  m=q.text.match(/^估算：(\d+) × (\d+) × (\d+) ≈/);            // 估算 + 結合性質（三個數）
+  if(m){const ea=Math.round(+m[1]/10)*10,eb=Math.round(+m[2]/10)*10;return [ea*eb*+m[3],`${ea} × ${eb} × ${m[3]}`]}
+  m=q.text.match(/^估算：(\d+) × (\d+) ≈/);                     // 估算：各取最接近嘅十位
+  if(m){const ea=Math.round(+m[1]/10)*10,eb=Math.round(+m[2]/10)*10;return [ea*eb,`${ea} × ${eb}`]}
+  m=q.text.match(/^(\d+) × (\d+) = (\d+)，寫出 (\d+) × (\d+) = \?$/); // 交換性質
+  if(m){const p=+m[1]*+m[2];
+    if(+m[4]!==+m[2]||+m[5]!==+m[1]||p!==+m[3])return[-1,'交換性質題目本身寫錯'];
+    return [p,`${m[4]} × ${m[5]}`]}
+  m=q.text.match(/^(\d+) × (\d+) = \?$/);                       // 其餘直式乘法
+  if(m)return [+m[1]*+m[2],`${m[1]} × ${m[2]}`];
+  return null;                                                  // 應用題：答案隨題目變
+}
+// ---- 自檢：?test 開啟時跑，斷言題目 / 選項 / 題庫 / 計分正確 ----
 function selfTest(){
   const A=(c,m)=>{if(!c)throw new Error('FAIL: '+m)};
-  for(const g of TYPES)for(let i=0;i<400;i++){const q=g(),o=opts(q),rm=q.ans.match(/^商(\d+) 餘(\d+)$/);
+  for(const g of TYPES)for(let i=0;i<400;i++){const q=g(),o=opts(q);
     A(o.length===4&&o.includes(q.ans),'選項要有4個且含答案');
     A(new Set(o).size===4,'選項不可重複');
-    A(/^\d+$/.test(q.ans)||rm,'答案格式: '+q.ans);
-    A((rm?+rm[1]:+q.ans)>=0,'答案唔可以係負數');
-    const d=q.text.match(/(\d+) ÷ (\d+)/);
-    if(d){const a=+d[1],b=+d[2];A(b>0&&a>0,'被除數/除數唔可以係0');
-      if(rm){A(+rm[2]<b,'餘數必須細過除數: '+q.text);A(b*(+rm[1])+ +rm[2]===a,'商餘算錯: '+q.text)}
-      else if(q.approx)A(q.ans===String(Math.round(a/b/10)*10),'估算答案錯: '+q.text); // 估算題唔要求整除
-      else A(a/b===+q.ans&&a%b===0,'除法答案錯: '+q.text);}
-    if(q.hint)A(q.hint.length>0,'提示唔可以係空');}
+    A(/^\d+$/.test(q.ans),'答案格式: '+q.ans);
+    A(+q.ans>0&&!/NaN/.test(q.text+q.ans+q.hint),'答案唔可以係 0／負數／NaN: '+q.text);
+    const e=expect(q);
+    if(e)A(+q.ans===e[0],`答案錯: ${q.text}（應該 ${e[1]} = ${e[0]}）`);
+    A(q.hint&&q.hint.length>0,'提示唔可以係空');
+    // 提示唔可以直接寫出答案，否則小朋友唔使計就睇到答案
+    if(e)A(!new RegExp(`(^|\\D)${q.ans}(\\D|$)`).test(q.hint),'提示洩漏答案: '+q.text);}
   for(let t=0;t<300;t++){const bk=makeBank(BANK); // 題庫檢查
     A(bk.length===BANK,'題庫要 '+BANK+' 題');
     A(new Set(bk.map(key)).size===BANK,'題庫內有重複題');
@@ -210,6 +247,9 @@ function selfTest(){
     A(pc>=0&&pc<=100&&grade(pc)[1].length>0,'計分錯: '+k);}
   A(grade(100)[1]==='優'&&grade(89)[1]==='良'&&grade(74)[1]==='中'&&grade(59)[1]==='加油','等第界線錯');
   A(BANK===20&&PER===10&&SEC>0,'份數設定錯');
+  // 4N1 範圍：兩位數×兩位數、三位數×兩位數
+  for(const g of [qTwo,qBig])for(let i=0;i<300;i++){const q=g(),m=q.text.match(/^(\d+) × (\d+) =/);
+    A(Math.max(+m[1],+m[2])<=999,'超出 4N1 數位範圍: '+q.text);}
   console.log('PASS 全部自檢通過');
   document.title='TEST OK';
   const h=el('h2',null,'✅ 自檢通過');h.style.color='#2ec4b6';h.style.textAlign='center';

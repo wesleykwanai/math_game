@@ -59,8 +59,8 @@ const store = {};
 const localStorage = {
   getItem: (k) => (k in store ? store[k] : null),
   setItem: (k, v) => { store[k] = String(v); },
-  get p4div() { return store.p4div; },
-  set p4div(v) { store.p4div = String(v); },
+  get p4mul() { return store.p4mul; },
+  set p4mul(v) { store.p4mul = String(v); },
 };
 
 // Timers: run callbacks synchronously so a whole game completes in one tick.
@@ -117,7 +117,7 @@ A(overText.includes('6/10'), `results missing score 6/10: ${overText.slice(0, 16
 A(overText.includes('答對 6 題，答錯 4 題'), 'results missing correct/wrong counts');
 A(overText.includes('要溫習嘅題目（4 題）'), 'results missing wrong-question count');
 A(overText.includes('✅ 答案：'), 'results missing answers to review');
-A(store.p4div === '60', `best score should be 60, got ${store.p4div}`);
+A(store.p4mul === '60', `best score should be 60, got ${store.p4mul}`);
 
 const wrongBox = over.children.find((c) => c.id === 'wrong');
 A(!!wrongBox, 'expected a #wrong review block');
@@ -145,17 +145,17 @@ while (api.getS().i < api.getS().done) answerCurrent(true);
 
 const over2 = reg.over;
 A(over2.textContent.includes('16/20'), `final score should be 16/20: ${over2.textContent.slice(0, 160)}`);
-A(store.p4div === '80', `best score should update to 80, got ${store.p4div}`);
+A(store.p4mul === '80', `best score should update to 80, got ${store.p4mul}`);
 const buttons2 = over2.children.filter((c) => c.tag === 'button');
 A(buttons2.length === 1, `at 20/20 the 加考 button must be gone, got ${buttons2.length}`);
 
 // --- a perfect round shows the all-correct message ---
 // 再考一次 does location.reload() in the browser, so start a genuinely new game
-store.p4div = '0';
+store.p4mul = '0';
 api.startGame();
 while (api.getS().i < api.getS().done) answerCurrent(true);
 A(reg.over.textContent.includes('全部答對'), 'perfect game should show 💯 message');
-A(store.p4div === '100', `perfect game should record 100, got ${store.p4div}`);
+A(store.p4mul === '100', `perfect game should record 100, got ${store.p4mul}`);
 
 console.log(`  round 1: 10 questions -> results page built from DOM nodes OK`);
 console.log(`  round 2: 加考 to 20 -> tot/bar/counts updated OK`);

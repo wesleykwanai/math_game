@@ -42,7 +42,7 @@ const sandbox = {
 vm.createContext(sandbox);
 const api = vm.runInContext(
   patched +
-  '\n;({qRound,qExact,qRemain,qBar,qBack,qTwo,qBig,qBigRemain,qInvBig,qEstimate,TYPES,opts,key,makeBank,R,PER,BANK,SEC})',
+  '\n;({qTwo,qCarry,qBig,qSwap,qCombine,qEstimate,qEstimate3,qWord,qMissing,TYPES,opts,key,makeBank,expect,R,PER,BANK,SEC})',
   sandbox
 );
 
@@ -65,34 +65,21 @@ function audit(q) {
   seen.add(k);
 
   // --- answer format ---
-  const rm = q.ans.match(/^商(\d+) 餘(\d+)$/);
-  if (!rm && !/^\d+$/.test(q.ans)) bad(`odd answer format: ${q.ans}  <- ${q.text}`);
-  if (q.ans === 'NaN' || q.ans.includes('NaN')) bad(`NaN in answer: ${q.text}`);
+  if (!/^\d+$/.test(q.ans)) bad(`odd answer format: ${q.ans}  <- ${q.text}`);
+  if (/NaN/.test(q.text + q.ans + (q.hint || ''))) bad(`NaN in question: ${q.text}`);
+  // 估算題答案一定係整十（取最接近嘅十位）
+  if (q.approx && +q.ans % 10 !== 0) bad(`estimate answer not a multiple of ten: ${q.text}`);
 
-  // --- the actual division ---
-  const d = q.text.match(/(\d+) ÷ (\d+)/);
-  if (d) {
-    const a = +d[1], b = +d[2];
-    if (!(b > 0 && a > 0)) bad(`non-positive operand: ${q.text}`);
-    if (rm) {
-      const [n, r] = [+rm[1], +rm[2]];
-      if (r >= b) bad(`remainder NOT < divisor (${r} >= ${b}): ${q.text}`);
-      if (b * n + r !== a) bad(`quotient/remainder wrong: ${q.text} (${b}*${n}+${r}=${b*n+r} != ${a})`);
-      if (n < 1) bad(`quotient should be >= 1: ${q.text}`);
-    } else if (q.approx) {
-      // estimation question: answer must be the nearest ten to a/b
-      const want = String(Math.round(a / b / 10) * 10);
-      if (q.ans !== want) bad(`estimate wrong: ${q.text} (ans ${q.ans}, want ${want})`);
-      if (+q.ans % 10 !== 0) bad(`estimate not a multiple of ten: ${q.text}`);
-      if (q.step !== 10) bad(`estimate must declare step:10: ${q.text}`);
-      if (q.hint && q.ans && new RegExp(`(^|\\D)${q.ans}(\\D|$)`).test(q.hint)) {
-        bad(`hint leaks the answer: ${q.text}`);
-      }
-    } else {
-      const n = +q.ans;
-      if (a % b !== 0) bad(`not evenly divisible but answer is a bare number: ${q.text}`);
-      if (a / b !== n) bad(`division wrong: ${q.text} (${a}/${b}=${a/b} != ${n})`);
-    }
+  // --- the maths: re-derive the answer from the question text ---
+  const e = api.expect(q);
+  if (e) {
+    if (+q.ans !== e[0]) bad(`answer wrong: ${q.text} (ans ${q.ans}, want ${e[0]} via ${e[1]})`);
+  } else if (!/\d/.test(q.text)) {
+    // Word problems carry their numbers in prose; make sure there is something to check.
+    bad(`question has no numbers to check: ${q.text}`);
+  }
+  if (q.hint && q.ans && new RegExp(`(^|\\D)${q.ans}(\\D|$)`).test(q.hint)) {
+    bad(`hint leaks the answer: ${q.text}`);
   }
 
   // --- options: 4, unique, contains answer, no negative numbers ---
@@ -102,61 +89,57 @@ function audit(q) {
     if (new Set(o).size !== 4) bad(`duplicate options ${JSON.stringify(o)}: ${q.text}`);
     if (!o.includes(q.ans)) bad(`answer "${q.ans}" missing from ${JSON.stringify(o)}`);
     for (const opt of o) {
-      if (/商(\d+) 餘(\d+)/.test(opt)) {
-        const m2 = opt.match(/^商(\d+) 餘(\d+)$/);
-        const b = d ? +d[2] : 9;
-        if (+m2[2] >= b) bad(`option teaches WRONG maths (remainder ${m2[2]} >= ${b}): ${opt}`);
-        if (+m2[1] < 1) bad(`option has quotient 0: ${opt}`);
-      } else if (/^-/.test(opt)) {
-        bad(`negative option ${opt}: ${q.text}`);
-      } else if (q.step) {
-        if (+opt % q.step !== 0) bad(`option ${opt} breaks step:${q.step}: ${q.text}`);
-      }
+      if (/^-/.test(opt)) bad(`negative option ${opt}: ${q.text}`);
+      // 估算題選項全部係整十，先唔會出現「120 vs 121」呢類似是而非嘅選項
+      else if (q.approx && +opt % 10 !== 0) bad(`estimate option ${opt} is not a multiple of ten: ${q.text}`);
     }
   }
 }
 
 // ---- enumerate the FULL space of each generator ----
-// Each generator calls R() a fixed number of times, in a fixed order.
-// Quotient ranges mirror the game exactly; qTwo/qBig derive their range from
-// the divisor, so they get a per-divisor function rather than a fixed pair.
-const divisors = [10, 20, 30, 40, 50];   // qRound's fixed divisor list
-const range = (lo, hi) => (lo > hi ? [] : Array.from({ length: hi - lo + 1 }, (_, i) => lo + i));
+// Each generator calls R() a fixed number of times, in a fixed order, so each
+// entry in a plan is exactly the sequence of values that generator consumes.
+// pick2() spends two R() calls (tens, units); pick3() spends three (h, t, u).
+const units = (lo, hi) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+const twoDigit = units(11, 99);         // both digits non-zero, as pick2() produces
+const threeDigit = units(100, 999);     // as pick3() produces
+const carryB = units(3, 9);             // qCarry multiplier
+const carryDigit = units(1, 9);         // qCarry tens and units digits
+const swapNums = units(11, 39);
+const swapB = units(3, 9);
+const combR = [15, 25, 35, 45];         // qCombine leading factor
+const missA = units(2, 9);              // qMissing hidden factor
+const twoPlan = (n) => [Math.floor(n / 10), n % 10];
+const threePlan = (n) => [Math.floor(n / 100), Math.floor(n / 10) % 10, n % 10];
+
+// Two-digit factors: every (a, b) pair, handing each generator the exact digit
+// sequence pick2() would have drawn.
+function* twoByTwo() {
+  for (const a of twoDigit) for (const b of twoDigit) yield [...twoPlan(a), ...twoPlan(b)];
+}
 
 const spec = {
-  // bs = divisor range (mirrors the game exactly), q = quotient range,
-  // rem = remainder range [lo, hiIgnored] meaning lo..b-1
-  qRound:     { bs: divisors, q: () => range(2, 9),  rem: null, divIdx: true },
-  qExact:     { bs: range(2, 9), q: () => range(2, 9),   rem: null },
-  qRemain:    { bs: range(3, 9), q: () => range(3, 10),  rem: [1, null] },
-  qBar:       { bs: range(3, 9), q: () => range(2, 9),   rem: null },
-  qBack:      { bs: range(2, 9), q: () => range(3, 12),  rem: null },
-  qTwo:       { bs: range(3, 9), q: (b) => range(11, Math.floor(99 / b)), rem: null },
-  qBig:       { bs: range(2, 9), q: (b) => range(Math.ceil(120 / b), Math.floor(999 / b)), rem: null },
-  qBigRemain: { bs: range(3, 9), q: () => range(11, 40),  rem: [1, null] },
-  qInvBig:    { bs: range(11, 29), q: () => range(11, 29), rem: null },
-  qEstimate:  { bs: range(3, 9), q: () => range(12, 49),  rem: [0, null] },  // may divide exactly
+  qTwo:       twoByTwo(),
+  qCarry:     (function* () { for (const b of carryB) for (const u of carryDigit) for (const t of carryDigit) yield [b, u, t]; })(),
+  qBig:       (function* () { for (const a of threeDigit) for (const b of twoDigit) yield [...threePlan(a), ...twoPlan(b)]; })(),
+  qSwap:      (function* () { for (const a of swapNums) for (const b of swapB) yield [a, b]; })(),
+  qCombine:   (function* () { for (let ri = 0; ri < combR.length; ri++) for (const m of twoDigit) yield [ri, ...twoPlan(m)]; })(),
+  qEstimate:  twoByTwo(),
+  qEstimate3: twoByTwo(),
+  qWord:      (function* () { for (const a of twoDigit) for (const b of twoDigit) for (const k of units(0, 3)) yield [...twoPlan(a), ...twoPlan(b), k]; })(),
+  qMissing:   (function* () { for (const a of missA) for (const b of twoDigit) yield [...twoPlan(b), a]; })(),
 };
 
-for (const name of api.TYPES.map((f) => f.name)) {
-  const s = spec[name];
-  if (!s) { bad(`audit does not know type: ${name}`); continue; }
+const declared = api.TYPES.map((f) => f.name);
+for (const name of declared) {
+  const gen = spec[name];
+  if (!gen) { bad(`audit does not know type: ${name}`); continue; }
   const before = seen.size;
-
-  for (const b of s.bs) {
-    for (const q of s.q(b)) {
-      if (s.rem) {
-        // R called for b, then q, then r
-        for (let r = s.rem[0]; r <= b - 1; r++) audit(withR([b, q, r], api[name]));
-      } else if (s.divIdx) {
-        // qRound: first R(0,4) picks the divisor index, then R(2,9) the quotient
-        audit(withR([s.bs.indexOf(b), q], api[name]));
-      } else {
-        audit(withR([b, q], api[name]));
-      }
-    }
-  }
+  for (const plan of gen) audit(withR(plan, api[name]));
   console.log(`  ${name.padEnd(10)} distinct questions: ${seen.size - before}`);
+}
+if (declared.join() !== Object.keys(spec).join()) {
+  bad(`audit covers [${Object.keys(spec)}] but the game has [${declared}]`);
 }
 
 // ---- bank integrity: 10 first, then +10 must reach exactly 20, all unique ----
