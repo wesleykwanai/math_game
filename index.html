@@ -130,7 +130,7 @@ function next(){
 }
 function answer(pick,btn,q){
   clearInterval(S.id);
-  $('opts').children.forEach(b=>b.disabled=true);
+  [...$('opts').children].forEach(b=>b.disabled=true);
   const pop=$('pop'),ok=pick===q.ans;
   const dot=document.querySelectorAll('#bar span')[S.i];
   if(ok){S.ok++;S.s+=(++S.c)*(1+Math.floor(S.c/3));dot.className='y';

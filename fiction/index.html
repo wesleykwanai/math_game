@@ -1,0 +1,873 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>倍數與公倍數</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 方格簿底紋 + 置中單欄教室板書；上方分頁 1→4 依教學順序；顏色固定編碼：藍=因數、橘=倍數、綠/紫=兩個數 */
+:root{
+  --bg:#f3f7f6; --grid:rgba(58,110,118,.075); --surface:#ffffff; --surface-2:#edf3f2; --ink:#1d2b31; --muted:#5a6a70; --line:#d3dfdd;
+  --factor:#2463a8; --factor-soft:#e2edfa; --multiple:#cf5a22; --multiple-soft:#fdede2;
+  --a:#25845a; --a-soft:#e0f2e8; --b:#7347b8; --b-soft:#eee6fa;
+  --ok:#25845a; --ok-soft:#e0f2e8; --bad:#c03a3a; --bad-soft:#fbe6e6; --star:#e3a00f;
+  --display:"LXGW WenKai TC","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --num:"Fredoka","Noto Sans TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12191c; --grid:rgba(140,190,195,.06); --surface:#1a2427; --surface-2:#223035; --ink:#e6eef0; --muted:#9db0b5; --line:#33454b;
+  --factor:#72aaf0; --factor-soft:#1b2d44; --multiple:#f29055; --multiple-soft:#3a2417;
+  --a:#5cc68f; --a-soft:#173327; --b:#ae8ceb; --b-soft:#2a2040;
+  --ok:#5cc68f; --ok-soft:#173327; --bad:#f07a7a; --bad-soft:#3a1d1f; --star:#f4bf3a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12191c; --grid:rgba(140,190,195,.06); --surface:#1a2427; --surface-2:#223035; --ink:#e6eef0; --muted:#9db0b5; --line:#33454b;
+  --factor:#72aaf0; --factor-soft:#1b2d44; --multiple:#f29055; --multiple-soft:#3a2417;
+  --a:#5cc68f; --a-soft:#173327; --b:#ae8ceb; --b-soft:#2a2040;
+  --ok:#5cc68f; --ok-soft:#173327; --bad:#f07a7a; --bad-soft:#3a1d1f; --star:#f4bf3a; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.7}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:20px 60px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(30px,5vw,44px)}
+h2{font-size:clamp(24px,3.6vw,32px)}
+h3{font-size:22px}
+p{margin:0}
+.frog{height:2.4em;vertical-align:-0.65em;margin-right:.2em;display:inline-block}
+.n{font-family:var(--num);font-weight:600;font-variant-numeric:tabular-nums}
+.f{color:var(--factor);font-weight:700}
+.m{color:var(--multiple);font-weight:700}
+.ca{color:var(--a);font-weight:700}
+.cb{color:var(--b);font-weight:700}
+.muted{color:var(--muted)}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 20px;margin-bottom:14px}
+header.top .sub{color:var(--muted);font-size:16px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:15px}
+.chip-key{display:inline-flex;align-items:center;gap:6px;padding:2px 12px;border-radius:999px;font-weight:700}
+.chip-key.f{background:var(--factor-soft)} .chip-key.m{background:var(--multiple-soft)}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:6px;overflow-x:auto;padding:8px;margin:0 -8px 18px;background:var(--bg);border-bottom:2px solid var(--line)}
+.tab{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font:700 18px var(--display);padding:8px 16px;border-radius:12px;cursor:pointer}
+.tab b{font-family:var(--num);display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface-2);margin-right:6px;font-size:16px}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tab[aria-selected="true"] b{background:var(--bg);color:var(--ink)}
+
+section.page{display:grid;gap:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0}
+.card > * + *{margin-top:12px}
+.lead{font-size:20px}
+
+/* hero equation */
+.eqhero{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:10px 18px;padding:10px 0}
+.eqhero .tok{display:grid;justify-items:center;gap:6px}
+.eqhero .box{font-family:var(--num);font-weight:700;font-size:clamp(40px,8vw,64px);line-height:1;padding:14px 22px;border-radius:16px;min-width:1.6em;text-align:center}
+.eqhero .box.f{background:var(--factor-soft);color:var(--factor)}
+.eqhero .box.m{background:var(--multiple-soft);color:var(--multiple)}
+.eqhero .op{font-family:var(--num);font-size:clamp(34px,6vw,52px);padding-top:14px;color:var(--muted)}
+.eqhero .tag{font-family:var(--display);font-size:22px;font-weight:700}
+.say{display:grid;gap:8px;font-size:21px;text-align:center}
+
+table.cmp{width:100%;border-collapse:collapse;font-size:18px}
+.tablewrap{overflow-x:auto}
+table.cmp th,table.cmp td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.cmp thead th{font-family:var(--display);font-size:22px}
+table.cmp thead th.f{background:var(--factor-soft)} table.cmp thead th.m{background:var(--multiple-soft)}
+table.cmp tbody th{color:var(--muted);font-weight:500;white-space:nowrap}
+
+.chant{font-family:var(--display);font-size:24px;text-align:center;padding:14px;border-radius:14px;background:var(--surface-2)}
+
+.controls{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+.ctl{display:flex;align-items:center;gap:10px;font-weight:700}
+.stepper{display:inline-flex;align-items:center;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.stepper button{border:0;background:var(--surface-2);color:var(--ink);width:44px;height:44px;font:700 24px var(--num);cursor:pointer}
+.stepper output{min-width:56px;text-align:center;font:700 26px var(--num)}
+.btn{border:2px solid var(--ink);background:var(--surface);color:var(--ink);font:700 18px var(--body);padding:8px 18px;border-radius:12px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.ga{border-color:var(--a);color:var(--a)} .btn.gb{border-color:var(--b);color:var(--b)}
+.btn:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--factor);outline-offset:2px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px}
+
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 14px;font:600 17px var(--body);cursor:pointer}
+.pill.on{border-color:var(--factor);background:var(--factor-soft);color:var(--factor)}
+
+svg.pic{display:block;max-width:100%;height:auto;margin:6px auto}
+.svgwrap{overflow-x:auto}
+.dot{fill:var(--factor)} .dot.left{fill:var(--bad)}
+.svglabel{fill:var(--muted);font:500 15px var(--body)}
+.svglabel.bad{fill:var(--bad);font-weight:700}
+.axis{stroke:var(--ink);stroke-width:3}
+.tick{stroke:var(--muted);stroke-width:1.5}
+.ticklbl{fill:var(--muted);font:500 15px var(--num);text-anchor:middle}
+.landlbl{font-family:var(--num);font-weight:700;text-anchor:middle}
+.landlbl.m{fill:var(--multiple)} .landlbl.a{fill:var(--a)} .landlbl.b{fill:var(--b)}
+.arc{fill:none;stroke-width:3.5;stroke-linecap:round}
+.arc.m{stroke:var(--multiple)} .arc.a{stroke:var(--a)} .arc.b{stroke:var(--b)}
+.arc.new{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .55s ease-out forwards}
+.pluslbl{font:600 14px var(--num);text-anchor:middle}
+.pluslbl.m{fill:var(--multiple)} .pluslbl.a{fill:var(--a)} .pluslbl.b{fill:var(--b)}
+.marker.m{fill:var(--multiple)} .marker.a{fill:var(--a)} .marker.b{fill:var(--b)}
+.landdot.m{fill:var(--multiple)} .landdot.a{fill:var(--a)} .landdot.b{fill:var(--b)}
+.band{fill:var(--multiple-soft)}
+.starshape{fill:var(--star);stroke:var(--multiple);stroke-width:1.5}
+.lcmring{fill:none;stroke:var(--multiple);stroke-width:3}
+.lcmtxt{fill:var(--multiple);font:700 15px var(--body);text-anchor:middle}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+.caption{font-size:20px;padding:12px 16px;border-radius:12px;background:var(--surface-2)}
+.caption.okc{background:var(--ok-soft)} .caption.badc{background:var(--bad-soft)}
+
+ol.mlist{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px 16px;font-size:20px}
+ol.mlist li{font-family:var(--num)}
+ol.mlist li span.t{font-family:var(--body);color:var(--muted);font-size:16px;margin-right:6px}
+
+.hgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:520px;margin-inline:auto}
+.hgrid div{aspect-ratio:1;display:grid;place-items:center;font:600 clamp(12px,2.6vw,18px) var(--num);border-radius:8px;background:var(--surface-2);color:var(--muted)}
+.hgrid div.hit{background:var(--multiple);color:#fff}
+
+.rowlist{display:grid;gap:10px}
+.rowlist .r{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rowlist .r > strong{min-width:120px;font-family:var(--display);font-size:20px}
+.nchip{font:600 19px var(--num);min-width:46px;padding:4px 10px;border-radius:10px;text-align:center;border:2px solid transparent}
+.nchip.a{background:var(--a-soft);color:var(--a)} .nchip.b{background:var(--b-soft);color:var(--b)}
+.nchip.common{background:var(--multiple);color:#fff}
+.nchip.lcm{outline:3px solid var(--star);outline-offset:2px}
+.tip{border-left:5px solid var(--factor);padding:10px 16px;background:var(--factor-soft);border-radius:0 12px 12px 0}
+.tip.m{border-color:var(--multiple);background:var(--multiple-soft)}
+details.teacher{font-size:16px;color:var(--muted)}
+details.teacher summary{cursor:pointer;font-weight:700}
+
+/* practice */
+.settings{display:grid;gap:14px;background:var(--surface-2);border-radius:16px;padding:16px 18px}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--ink);font:700 18px var(--body);padding:8px 18px;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.custom{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.custom label{display:grid;gap:4px;font-weight:700;font-size:16px}
+.custom input{font:500 20px var(--num);padding:8px 12px;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);width:100%}
+.custom small{font-weight:400;color:var(--muted)}
+.msg{font-size:16px} .msg.err{color:var(--bad)} .msg.okm{color:var(--ok)}
+
+.ptabs{display:flex;flex-wrap:wrap;gap:8px}
+.pbox{display:grid;gap:16px}
+.phead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.score{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
+.score svg{width:24px;height:24px}
+.score svg path{fill:var(--star)}
+.question{font-family:var(--display);font-size:clamp(26px,4.4vw,36px);text-align:center}
+.eqsmall{font:700 clamp(30px,6vw,44px) var(--num);text-align:center;letter-spacing:.04em}
+.statement{font-family:var(--display);font-size:clamp(30px,5.4vw,44px);text-align:center;padding:16px;border:3px dashed var(--line);border-radius:16px}
+.ox{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
+.ox button{width:150px;height:110px;border-radius:20px;border:3px solid var(--ink);background:var(--surface);color:var(--ink);font:700 30px var(--display);cursor:pointer;display:grid;place-items:center;line-height:1.1}
+.ox button .sym{font:700 44px var(--num)}
+.ox button.picked{background:var(--ink);color:var(--bg)}
+.feedback{font-size:20px;padding:14px 18px;border-radius:14px;display:grid;gap:6px}
+.feedback.okf{background:var(--ok-soft)} .feedback.badf{background:var(--bad-soft)}
+.feedback .big{font-family:var(--display);font-size:26px;font-weight:700}
+.feedback.okf .big{color:var(--ok)} .feedback.badf .big{color:var(--bad)}
+.pop{animation:pop .4s ease-out}
+@keyframes pop{0%{transform:scale(.94)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+
+.tapgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;max-width:640px;margin-inline:auto;width:100%}
+.tapgrid button{aspect-ratio:1;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:600 clamp(13px,2.8vw,20px) var(--num);cursor:pointer;padding:0}
+.tapgrid button.sel{background:var(--multiple);border-color:var(--multiple);color:#fff}
+.tapgrid button.right{background:var(--ok);border-color:var(--ok);color:#fff}
+.tapgrid button.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+.tapgrid button.miss{border:3px dashed var(--multiple);color:var(--multiple)}
+
+.blanks{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;font:700 30px var(--num)}
+.blanks input{width:88px;font:700 28px var(--num);text-align:center;padding:6px;border:3px solid var(--multiple);border-radius:12px;background:var(--surface);color:var(--ink)}
+.blanks input.right{border-color:var(--ok);background:var(--ok-soft)}
+.blanks input.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.bigin{font:700 32px var(--num);width:140px;text-align:center;padding:6px;border:3px solid var(--multiple);border-radius:12px;background:var(--surface);color:var(--ink)}
+.center{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;align-items:center}
+
+.rowlist .r button.nchip{cursor:pointer}
+.rowlist .r button.nchip.sel{background:var(--multiple);color:#fff}
+.rowlist .r button.nchip.right{background:var(--ok);color:#fff}
+.rowlist .r button.nchip.wrong{background:var(--bad-soft);color:var(--bad);border-color:var(--bad);text-decoration:line-through}
+.rowlist .r button.nchip.miss{border:2px dashed var(--multiple)}
+.choices{display:flex;justify-content:center;flex-wrap:wrap;gap:12px}
+.choices button{min-width:100px;font:700 30px var(--num);padding:10px 18px;border-radius:16px;border:3px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.choices button.right{background:var(--ok);border-color:var(--ok);color:#fff}
+.choices button.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.hintbox{font-size:18px;background:var(--surface-2);border-radius:12px;padding:12px 16px}
+.hintbox ul{margin:6px 0 0;padding-left:1.2em}
+
+/* scaffolds */
+.blanks.seq{align-items:flex-start}
+.seqcell,.seqjoin{display:grid;justify-items:center;gap:2px}
+.kx{font:600 15px var(--num);color:var(--muted);letter-spacing:0}
+.seqjoin .kx{color:var(--multiple)}
+.helper{background:var(--surface-2);border-radius:16px;padding:14px 16px;display:grid;gap:10px}
+.helper-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-family:var(--display);font-size:21px}
+.seg.small button{font-size:16px;padding:6px 14px}
+.steps{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.stepcard{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 18px;display:grid;justify-items:center;gap:6px;min-width:160px}
+.stephead{font-weight:700}
+.vcalc{display:grid;grid-template-columns:auto auto;column-gap:12px;row-gap:2px;justify-items:end;align-items:center;font:700 32px var(--num);font-variant-numeric:tabular-nums}
+.vcalc .op{color:var(--muted)}
+.vcalc .bar{grid-column:1/-1;justify-self:stretch;height:3px;background:var(--ink);margin:2px 0}
+.vcalc input{grid-column:1/-1;width:120px;font:700 30px var(--num);text-align:right;padding:4px 10px;border:3px solid var(--multiple);border-radius:10px;background:var(--surface);color:var(--ink)}
+.vcalc input.right,.lstep input.right{border-color:var(--ok);background:var(--ok-soft)}
+.vcalc input.wrong,.lstep input.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.q{color:var(--multiple)}
+.stepmsg{font-size:16px;min-height:1.5em;text-align:center;max-width:230px}
+.stepmsg.left{text-align:left;max-width:none;font-size:18px}
+.stepmsg.okm{color:var(--ok);font-weight:700} .stepmsg.err{color:var(--bad)}
+.lrows{display:grid;gap:10px}
+.lrow{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 14px;display:grid;gap:6px}
+.lrow.found{border-color:var(--multiple);background:var(--multiple-soft)}
+.lstep{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:26px}
+.lstep input{width:100px;font:700 26px var(--num);text-align:center;padding:4px;border:3px solid var(--multiple);border-radius:10px;background:var(--surface);color:var(--ink)}
+.tagk{font:700 16px var(--body);color:var(--muted)}
+.lstep2{font-size:21px}
+.ox2{display:inline-flex;flex-wrap:wrap;gap:8px;margin-left:10px}
+.ox2 button{border:2px solid var(--ink);background:var(--surface);color:var(--ink);font:700 18px var(--body);padding:6px 14px;border-radius:12px;cursor:pointer}
+.ox2 button.picked{background:var(--ink);color:var(--bg)}
+
+@media (max-width:560px){
+  body{font-size:17px}
+  .card{padding:16px}
+  .ox button{width:120px;height:96px}
+  .rowlist .r > strong{min-width:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .arc.new{animation:none;stroke-dashoffset:0}
+  .pop{animation:none}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>倍數與公倍數</h1>
+      <p class="sub">小四數學・互動課堂</p>
+    </div>
+    <div class="legend" aria-label="顏色說明">
+      <span class="chip-key f">藍色＝因數</span>
+      <span class="chip-key m">橘色＝倍數</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="p1" aria-selected="true"><b>1</b>因數和倍數</button>
+    <button class="tab" role="tab" data-tab="p2" aria-selected="false"><b>2</b>找倍數</button>
+    <button class="tab" role="tab" data-tab="p3" aria-selected="false"><b>3</b>公倍數</button>
+    <button class="tab" role="tab" data-tab="p4" aria-selected="false"><b>4</b>練習區</button>
+  </nav>
+
+  <!-- ================= 1 ================= -->
+  <section class="page" id="p1">
+    <div class="card">
+      <h2>一個乘法算式，就能分清楚</h2>
+      <div class="eqhero" aria-label="3 乘 4 等於 12">
+        <div class="tok"><div class="box f">3</div><div class="tag f">因數</div></div>
+        <div class="op">×</div>
+        <div class="tok"><div class="box f">4</div><div class="tag f">因數</div></div>
+        <div class="op">=</div>
+        <div class="tok"><div class="box m">12</div><div class="tag m">倍數</div></div>
+      </div>
+      <div class="say">
+        <p><span class="f n">3</span> 和 <span class="f n">4</span> 是 <span class="n">12</span> 的<span class="f">因數</span>。</p>
+        <p><span class="m n">12</span> 是 <span class="n">3</span> 的<span class="m">倍數</span>，也是 <span class="n">4</span> 的<span class="m">倍數</span>。</p>
+      </div>
+      <p class="chant">拿來乘的是<span class="f">因數</span>，乘出來的是<span class="m">倍數</span></p>
+    </div>
+
+    <div class="card">
+      <h2>排排看：剛好排完，就是因數</h2>
+      <p>把糖果排成好幾排，每排一樣多。如果<strong>剛好排完、沒有剩下</strong>，排數就是糖果總數的<span class="f">因數</span>。</p>
+      <div class="controls">
+        <div class="ctl">糖果總數 <div class="stepper" id="dotN"></div></div>
+        <div class="ctl">排成幾排 <div class="stepper" id="dotR"></div></div>
+      </div>
+      <div>
+        <p class="muted" style="font-size:16px">按一下，試試剛好排完的排法：</p>
+        <div class="pills" id="dotPairs"></div>
+      </div>
+      <div class="svgwrap"><svg class="pic" id="dotSvg" role="img" aria-label="糖果排列圖"></svg></div>
+      <p class="caption" id="dotCap"></p>
+    </div>
+
+    <div class="card">
+      <h2>因數和倍數有甚麼不同？</h2>
+      <div class="tablewrap">
+      <table class="cmp">
+        <thead><tr><th></th><th class="f">因數（以 12 為例）</th><th class="m">倍數（以 3 為例）</th></tr></thead>
+        <tbody>
+          <tr><th>怎麼找</th><td>用除法：<span class="n">12</span> 除以它，<strong>沒有餘數</strong></td><td>用乘法：<span class="n">3</span> × 1、× 2、× 3……</td></tr>
+          <tr><th>例子</th><td class="n f">1, 2, 3, 4, 6, 12</td><td class="n m">3, 6, 9, 12, 15, …</td></tr>
+          <tr><th>大小</th><td>比自己小，或等於自己</td><td>比自己大，或等於自己</td></tr>
+          <tr><th>有幾個</th><td>數得完</td><td>數不完，有無限多個</td></tr>
+          <tr><th>最小的</th><td><span class="n">1</span>（1 是每個數的因數）</td><td>自己（<span class="n">3</span> × 1 = <span class="n">3</span>）</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="tip">記住：<strong>每個數都是自己的因數，也是自己的倍數。</strong></p>
+      <details class="teacher"><summary>教學小提示</summary>
+        <p>學生說句子時，請他們先指著算式找「乘出來的數」，再說「＿是＿的倍數」。倒過來再說一次「＿是＿的因數」。同一個算式說兩種句子，最能協助學生分辨。</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= 2 ================= -->
+  <section class="page" id="p2" hidden>
+    <div class="card">
+      <h2>倍數：一次跳一樣多</h2>
+      <p><img class="frog" src="frog.png" alt="跳跳小青蛙">小青蛙每次跳 <span class="m n" id="jlN1">3</span> 格。牠停下來的地方，就是 <span class="n" id="jlN2">3</span> 的<span class="m">倍數</span>。</p>
+      <div class="controls">
+        <div class="ctl">一次跳幾格 <div class="stepper" id="jlStep"></div></div>
+        <div class="btnrow">
+          <button class="btn primary" id="jlJump">跳一下</button>
+          <button class="btn" id="jlAll">全部跳完</button>
+          <button class="btn" id="jlReset">重來</button>
+        </div>
+      </div>
+      <div class="svgwrap"><svg class="pic" id="jlSvg" viewBox="0 0 1000 200" role="img" aria-label="數線跳躍圖"></svg></div>
+      <ol class="mlist" id="jlList"></ol>
+    </div>
+
+    <div class="card">
+      <h2>在百數表上找規律</h2>
+      <p>橘色格子是 <span class="n" id="hcN">3</span> 的倍數。看看它們排成什麼形狀？</p>
+      <div class="hgrid" id="hc"></div>
+    </div>
+
+    <div class="card">
+      <h2>怎麼知道是不是倍數？</h2>
+      <p>用除法檢查：<strong>除得盡（沒有餘數）就是倍數。</strong></p>
+      <div class="rowlist">
+        <p class="caption okc"><span class="n">24 ÷ 3 = 8</span>　沒有餘數 → <span class="n">24</span> 是 <span class="n">3</span> 的<span class="m">倍數</span></p>
+        <p class="caption badc"><span class="n">25 ÷ 3 = 8 … 1</span>　有餘數 → <span class="n">25</span> 不是 <span class="n">3</span> 的倍數</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 ================= -->
+  <section class="page" id="p3" hidden>
+    <div class="card">
+      <h2>公倍數：兩隻青蛙都踩到的地方</h2>
+      <p><img class="frog" src="frog.png" alt="綠青蛙"><span class="ca">綠青蛙</span>一次跳 <span class="ca n" id="cmA1">4</span> 格，<img class="frog" src="frog_purple.png" alt="紫青蛙"><span class="cb">紫青蛙</span>一次跳 <span class="cb n" id="cmB1">6</span> 格。兩隻都踩到的數，就是<span class="m">公倍數</span>（共同的倍數）。</p>
+      <div class="controls">
+        <div class="ctl"><span class="ca">綠</span> <div class="stepper" id="cmAstep"></div></div>
+        <div class="ctl"><span class="cb">紫</span> <div class="stepper" id="cmBstep"></div></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn ga" id="cmJA">綠青蛙跳</button>
+        <button class="btn gb" id="cmJB">紫青蛙跳</button>
+        <button class="btn primary" id="cmAll">全部跳完</button>
+        <button class="btn" id="cmReset">重來</button>
+      </div>
+      <div class="svgwrap"><svg class="pic" id="cmSvg" viewBox="0 0 1000 340" role="img" aria-label="兩條數線找公倍數"></svg></div>
+      <div class="rowlist" id="cmLists"></div>
+    </div>
+
+    <div class="card">
+      <h2>最小公倍數</h2>
+      <p>公倍數有無限多個，其中<strong>最小的那一個</strong>，叫做<span class="m">最小公倍數</span>。</p>
+      <p class="tip m"><strong>建議方法：從較大的數開始找。</strong>把比較大的數的倍數一個一個列出來，第一個也能被小的數除盡的，就是最小公倍數。</p>
+      <div class="hintbox" id="cmMethod"></div>
+    </div>
+  </section>
+
+  <!-- ================= 4 ================= -->
+  <section class="page" id="p4" hidden>
+    <div class="settings card">
+      <div class="controls">
+        <strong>題目來源</strong>
+        <div class="seg" id="modeSeg">
+          <button data-mode="auto">自動出題</button>
+          <button data-mode="custom">教師自訂</button>
+        </div>
+      </div>
+      <div id="autoBox" class="controls">
+        <strong>難度</strong>
+        <div class="pills" id="levelPills">
+          <button class="pill" data-lv="1">Lv1　2～5</button>
+          <button class="pill" data-lv="2">Lv2　2～10</button>
+          <button class="pill" data-lv="3">Lv3　2～15</button>
+        </div>
+      </div>
+      <div class="controls">
+        <strong>計算小幫手</strong>
+        <div class="seg" id="scafSeg">
+          <button data-s="1">一開始就打開</button>
+          <button data-s="0">需要時再打開</button>
+        </div>
+        <span class="muted" style="font-size:15px">用在「倍數填空」和「最小公倍數」</span>
+      </div>
+      <div id="customBox" hidden>
+        <div class="custom">
+          <label for="cuSingles">找倍數用的數字 <small>用逗號隔開，例如：3, 4, 7</small>
+            <input id="cuSingles" type="text" inputmode="numeric" autocomplete="off">
+          </label>
+          <label for="cuPairs">公倍數用的兩個數 <small>每組用分號隔開，例如：4,6; 3,5</small>
+            <input id="cuPairs" type="text" autocomplete="off">
+          </label>
+        </div>
+        <div class="controls" style="margin-top:10px">
+          <button class="btn primary" id="cuApply">套用題目</button>
+          <span class="msg" id="cuMsg">題目會依照順序出現，出完再從頭開始。</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ptabs" id="ptabs">
+      <button class="pill" data-p="judge">因數還是倍數？</button>
+      <button class="pill" data-p="grid">點出倍數</button>
+      <button class="pill" data-p="isMul">是不是倍數？</button>
+      <button class="pill" data-p="fill">倍數填空</button>
+      <button class="pill" data-p="common">找公倍數</button>
+      <button class="pill" data-p="lcm">最小公倍數</button>
+    </div>
+
+    <div class="card pbox">
+      <div class="phead">
+        <h3 id="pTitle"></h3>
+        <div class="controls" style="gap:12px">
+          <span class="score"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z"/></svg><span id="pScore">答對 0 / 0 題</span></span>
+          <button class="btn" id="pResetScore" style="font-size:15px;padding:4px 12px">分數歸零</button>
+        </div>
+      </div>
+      <div id="pArea" class="pbox"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const NS='http://www.w3.org/2000/svg';
+const gcd=(a,b)=>{while(b){[a,b]=[b,a%b]}return a};
+const lcm=(a,b)=>a/gcd(a,b)*b;
+const rand=(lo,hi)=>lo+Math.floor(Math.random()*(hi-lo+1));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function svgEl(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+/* 青蛙：跟住跳躍弧線移動 */
+const FW=46,FH=46;
+function mkImg(src,parent){const el=svgEl('image',{href:src},parent);el.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',src);el.setAttribute('width',FW);el.setAttribute('height',FH);return el}
+function setImgSrc(img,src){img.setAttribute('href',src);img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',src)}
+function frogAt(img,cx,cy){img.setAttribute('x',(cx-FW/2).toFixed(1));img.setAttribute('y',(cy-FH/2).toFixed(1))}
+function hopFrog(img,p0,pc,p1,dur,js,rs){const t0=performance.now();if(js)setImgSrc(img,js);(function step(now){const t=Math.min(1,(now-t0)/dur),u=1-t;frogAt(img,u*u*p0.x+2*u*t*pc.x+t*t*p1.x,u*u*p0.y+2*u*t*pc.y+t*t*p1.y);if(t<1)requestAnimationFrame(step);else if(rs)setImgSrc(img,rs)})(t0)}
+function stepper(el,{min,max,value,onChange}){
+  el.innerHTML='<button type="button" aria-label="減少">−</button><output></output><button type="button" aria-label="增加">+</button>';
+  const out=el.querySelector('output');let v=value;
+  const set=nv=>{v=Math.max(min(),Math.min(max(),nv));out.textContent=v;};
+  set(v);
+  el.children[0].onclick=()=>{set(v-1);onChange(v)};
+  el.children[2].onclick=()=>{set(v+1);onChange(v)};
+  return {get:()=>v,set:nv=>{set(nv)}};
+}
+
+/* ---------- tabs ---------- */
+const tabs=[...document.querySelectorAll('.tab')];
+function showTab(id){
+  tabs.forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===id));
+  ['p1','p2','p3','p4'].forEach(p=>{$('#'+p).hidden=(p!==id)});
+  try{history.replaceState(null,'','#'+id)}catch(e){}
+}
+tabs.forEach(t=>t.onclick=()=>{showTab(t.dataset.tab);window.scrollTo({top:0})});
+const h=(location.hash||'').slice(1);if(['p1','p2','p3','p4'].includes(h))showTab(h);
+
+/* ---------- 1. dots ---------- */
+const dot={N:12,R:3};
+const sN=stepper($('#dotN'),{min:()=>2,max:()=>36,value:12,onChange:v=>{dot.N=v;if(dot.R>v)dot.R=v;sR.set(dot.R);renderDots()}});
+const sR=stepper($('#dotR'),{min:()=>1,max:()=>Math.min(dot.N,12),value:3,onChange:v=>{dot.R=v;renderDots()}});
+function renderDots(){
+  const N=dot.N,R=dot.R,C=Math.floor(N/R),rem=N%R;
+  const pairs=$('#dotPairs');pairs.innerHTML='';
+  for(let d=1;d<=Math.min(N,12);d++){ if(N%d===0){
+    const b=document.createElement('button');b.className='pill'+(d===R?' on':'');
+    b.innerHTML=`<span class="n">${d}</span> 排，每排 <span class="n">${N/d}</span> 顆`;
+    b.onclick=()=>{dot.R=d;sR.set(d);renderDots()};pairs.appendChild(b);
+  }}
+  const svg=$('#dotSvg');svg.innerHTML='';
+  const cell=38,left=74,top=12,cols=Math.max(C,rem,1);
+  const w=left+cols*cell+16,hgt=top+R*cell+(rem?cell+26:0)+8;
+  svg.setAttribute('viewBox',`0 0 ${w} ${hgt}`);svg.setAttribute('width',w);
+  for(let i=0;i<R;i++){
+    svgEl('text',{x:left-12,y:top+i*cell+cell/2+5,'text-anchor':'end',class:'svglabel'},svg,`第${i+1}排`);
+    for(let j=0;j<C;j++)svgEl('circle',{cx:left+j*cell+cell/2,cy:top+i*cell+cell/2,r:14,class:'dot'},svg);
+  }
+  if(rem){
+    const y=top+R*cell+26;
+    svgEl('line',{x1:left,x2:left+cols*cell,y1:y-12,y2:y-12,class:'tick','stroke-dasharray':'5 5'},svg);
+    svgEl('text',{x:left-12,y:y+cell/2+5,'text-anchor':'end',class:'svglabel bad'},svg,'多出來');
+    for(let j=0;j<rem;j++)svgEl('circle',{cx:left+j*cell+cell/2,cy:y+cell/2,r:14,class:'dot left'},svg);
+  }
+  const cap=$('#dotCap');
+  const factors=[];for(let d=1;d<=N;d++)if(N%d===0)factors.push(d);
+  if(rem===0){
+    cap.className='caption okc';
+    cap.innerHTML=`<span class="n">${N}</span> 顆排成 <span class="n">${R}</span> 排，每排 <span class="n">${C}</span> 顆，<strong>剛好排完！</strong><br><span class="n f">${R}</span> × <span class="n f">${C}</span> = <span class="n m">${N}</span>　→　<span class="f n">${R}</span> 和 <span class="f n">${C}</span> 是 <span class="n">${N}</span> 的因數；<span class="m n">${N}</span> 是 <span class="n">${R}</span> 和 <span class="n">${C}</span> 的倍數。<br><span class="muted">${N} 的全部因數：</span><span class="n f">${factors.join(', ')}</span>`;
+  }else{
+    cap.className='caption badc';
+    cap.innerHTML=`<span class="n">${N}</span> 顆排成 <span class="n">${R}</span> 排，每排 <span class="n">${C}</span> 顆，還<strong>多出 <span class="n">${rem}</span> 顆</strong>，沒辦法剛好排完。<br><span class="n">${N} ÷ ${R} = ${C} … ${rem}</span>　→　<span class="n">${R}</span> 不是 <span class="n">${N}</span> 的因數。`;
+  }
+}
+renderDots();
+
+/* ---------- 2. number line ---------- */
+const jl={n:3,j:0};
+const sJ=stepper($('#jlStep'),{min:()=>2,max:()=>15,value:3,onChange:v=>{jl.n=v;jl.j=0;renderJL(false)}});
+$('#jlJump').onclick=()=>{if(jl.j<10){jl.j++;renderJL(true)}};
+let jlBusy=false;
+$('#jlAll').onclick=()=>{if(jlBusy)return;jlBusy=true;(function go(){if(jl.j>=10){jlBusy=false;return}jl.j++;renderJL(true);setTimeout(go,250)})()};
+$('#jlReset').onclick=()=>{jl.j=0;renderJL(false)};
+function renderJL(anim){
+  const n=jl.n,L=n*10,svg=$('#jlSvg');svg.innerHTML='';
+  $('#jlN1').textContent=n;$('#jlN2').textContent=n;$('#hcN').textContent=n;
+  const Y=140,x=v=>40+v*920/L;
+  svgEl('line',{x1:30,x2:975,y1:Y,y2:Y,class:'axis'},svg);
+  svgEl('path',{d:`M975 ${Y-7} L988 ${Y} L975 ${Y+7}`,class:'axis',fill:'none'},svg);
+  for(let v=0;v<=L;v++){
+    if(L<=60||v%n===0)svgEl('line',{x1:x(v),x2:x(v),y1:Y-(v%n===0?9:5),y2:Y+(v%n===0?9:5),class:'tick'},svg);
+    const landed=v>0&&v%n===0&&v/n<=jl.j;
+    if(!landed&&(v===0||(L<=30)))svgEl('text',{x:x(v),y:Y+30,class:'ticklbl'},svg,v);
+  }
+  const fs=Math.max(13,Math.min(22,920/10*0.32));
+  for(let k=1;k<=jl.j;k++){
+    const x1=x((k-1)*n),x2=x(k*n),mid=(x1+x2)/2,hh=Math.min(70,(x2-x1)*0.7);
+    svgEl('path',{d:`M${x1} ${Y} Q${mid} ${Y-2*hh} ${x2} ${Y}`,class:'arc m'+(anim&&k===jl.j?' new':''),pathLength:1},svg);
+    svgEl('text',{x:mid,y:Y-hh-8,class:'pluslbl m'},svg,'+'+n);
+    svgEl('circle',{cx:x2,cy:Y,r:6,class:'landdot m'},svg);
+    svgEl('text',{x:x2,y:Y+32,class:'landlbl m','font-size':fs},svg,k*n);
+  }
+  svgEl('circle',{cx:x(jl.j*n),cy:Y,r:11,class:'marker m'},svg);
+  const frog=mkImg('frog.png',svg),restY=Y-4-FH/2;
+  if(anim&&jl.j>=1){const k=jl.j,x1=x((k-1)*n),x2=x(k*n),mid=(x1+x2)/2,hh=Math.min(70,(x2-x1)*0.7);frogAt(frog,x1,restY);hopFrog(frog,{x:x1,y:restY},{x:mid,y:Y-2*hh},{x:x2,y:restY},460,'frog_jump.png','frog.png')}
+  else frogAt(frog,x(jl.j*n),restY);
+  const ol=$('#jlList');ol.innerHTML='';
+  for(let k=1;k<=jl.j;k++){const li=document.createElement('li');li.innerHTML=`<span class="t">${k} 倍</span>${n} × ${k} = <span class="m">${n*k}</span>`;ol.appendChild(li)}
+  if(!jl.j){const li=document.createElement('li');li.innerHTML='<span class="t">按「跳一下」開始</span>';ol.appendChild(li)}
+  renderHC();
+}
+function renderHC(){
+  const hc=$('#hc');hc.innerHTML='';const n=jl.n;
+  for(let v=1;v<=100;v++){const d=document.createElement('div');d.textContent=v;if(v%n===0)d.className='hit';hc.appendChild(d)}
+}
+renderJL(false);
+
+/* ---------- 3. common multiples ---------- */
+const cm={a:4,b:6,ja:0,jb:0};
+function cmRange(){const l=lcm(cm.a,cm.b);let L=l*2;if(L/Math.min(cm.a,cm.b)>24)L=l;return L}
+function pickDistinct(v,old,other){if(v===other){v+=(v>=old?1:-1)}return(v<2||v>15)?old:v}
+const sA=stepper($('#cmAstep'),{min:()=>2,max:()=>15,value:4,onChange:v=>{cm.a=pickDistinct(v,cm.a,cm.b);sA.set(cm.a);cm.ja=cm.jb=0;renderCM()}});
+const sB=stepper($('#cmBstep'),{min:()=>2,max:()=>15,value:6,onChange:v=>{cm.b=pickDistinct(v,cm.b,cm.a);sB.set(cm.b);cm.ja=cm.jb=0;renderCM()}});
+$('#cmJA').onclick=()=>{if(cm.ja<cmRange()/cm.a){cm.ja++;renderCM('a')}};
+$('#cmJB').onclick=()=>{if(cm.jb<cmRange()/cm.b){cm.jb++;renderCM('b')}};
+let cmBusy=false;
+$('#cmAll').onclick=()=>{if(cmBusy)return;const L=cmRange(),ma=L/cm.a,mb=L/cm.b;cmBusy=true;(function go(){if(cm.ja>=ma&&cm.jb>=mb){cmBusy=false;return}if(cm.ja<ma)cm.ja++;if(cm.jb<mb)cm.jb++;renderCM('both');setTimeout(go,260)})()};
+$('#cmReset').onclick=()=>{cm.ja=cm.jb=0;renderCM()};
+function star(cx,cy,r,parent,cls){const p=[];for(let i=0;i<10;i++){const ang=-Math.PI/2+i*Math.PI/5,rr=i%2?r*0.45:r;p.push((cx+rr*Math.cos(ang)).toFixed(1)+','+(cy+rr*Math.sin(ang)).toFixed(1))}return svgEl('polygon',{points:p.join(' '),class:cls},parent)}
+function renderCM(anim){
+  const {a,b}=cm,L=cmRange(),l=lcm(a,b),svg=$('#cmSvg');svg.innerHTML='';
+  $('#cmA1').textContent=a;$('#cmB1').textContent=b;
+  $('#cmJA').textContent=`綠青蛙跳（+${a}）`;$('#cmJB').textContent=`紫青蛙跳（+${b}）`;
+  const x=v=>40+v*920/L,YA=110,YB=230;
+  const landA=new Set(),landB=new Set();for(let k=1;k<=cm.ja;k++)landA.add(k*a);for(let k=1;k<=cm.jb;k++)landB.add(k*b);
+  const commons=[...landA].filter(v=>landB.has(v)).sort((p,q)=>p-q);
+  commons.forEach(v=>svgEl('rect',{x:x(v)-17,y:YA-4,width:34,height:YB-YA+8,rx:10,class:'band'},svg));
+  [[YA,'a'],[YB,'b']].forEach(([Y])=>{
+    svgEl('line',{x1:30,x2:975,y1:Y,y2:Y,class:'axis'},svg);
+    svgEl('path',{d:`M975 ${Y-7} L988 ${Y} L975 ${Y+7}`,class:'axis',fill:'none'},svg);
+    for(let v=0;v<=L;v++){if(L<=60||v%a===0||v%b===0)svgEl('line',{x1:x(v),x2:x(v),y1:Y-5,y2:Y+5,class:'tick'},svg)}
+  });
+  svgEl('text',{x:40,y:YA+28,class:'ticklbl'},svg,0);svgEl('text',{x:40,y:YB-14,class:'ticklbl'},svg,0);
+  const fsA=Math.max(12,Math.min(20,(920*a/L)*0.42)),fsB=Math.max(12,Math.min(20,(920*b/L)*0.42));
+  for(let k=1;k<=cm.ja;k++){const x1=x((k-1)*a),x2=x(k*a),mid=(x1+x2)/2,hh=Math.min(45,(x2-x1)*0.7);
+    svgEl('path',{d:`M${x1} ${YA} Q${mid} ${YA-2*hh} ${x2} ${YA}`,class:'arc a'+(anim==='a'&&k===cm.ja?' new':''),pathLength:1},svg);
+    svgEl('circle',{cx:x2,cy:YA,r:5,class:'landdot a'},svg);
+    svgEl('text',{x:x2,y:YA+28,class:'landlbl a','font-size':fsA},svg,k*a);}
+  for(let k=1;k<=cm.jb;k++){const x1=x((k-1)*b),x2=x(k*b),mid=(x1+x2)/2,hh=Math.min(45,(x2-x1)*0.7);
+    svgEl('path',{d:`M${x1} ${YB} Q${mid} ${YB+2*hh} ${x2} ${YB}`,class:'arc b'+(anim==='b'&&k===cm.jb?' new':''),pathLength:1},svg);
+    svgEl('circle',{cx:x2,cy:YB,r:5,class:'landdot b'},svg);
+    svgEl('text',{x:x2,y:YB-14,class:'landlbl b','font-size':fsB},svg,k*b);}
+  commons.forEach((v,i)=>{star(x(v),(YA+YB)/2,i===0?17:13,svg,'starshape'); if(v===l)svgEl('circle',{cx:x(v),cy:(YA+YB)/2,r:24,class:'lcmring'},svg)});
+  svgEl('circle',{cx:x(cm.ja*a),cy:YA,r:10,class:'marker a'},svg);
+  svgEl('circle',{cx:x(cm.jb*b),cy:YB,r:10,class:'marker b'},svg);
+  const frogA=mkImg('frog.png',svg),frogB=mkImg('frog_purple.png',svg),restA=YA-4-FH/2,restB=YB+14+FH/2;
+  if(cm.ja>=1){const k=cm.ja,x1=x((k-1)*a),x2=x(k*a),mid=(x1+x2)/2,hh=Math.min(45,(x2-x1)*0.7);if(anim==='a'||anim==='both'){frogAt(frogA,x1,restA);hopFrog(frogA,{x:x1,y:restA},{x:mid,y:YA-2*hh},{x:x2,y:restA},460,'frog_jump.png','frog.png')}else frogAt(frogA,x2,restA)}else frogAt(frogA,x(0),restA);
+  if(cm.jb>=1){const k=cm.jb,x1=x((k-1)*b),x2=x(k*b),mid=(x1+x2)/2,hh=Math.min(45,(x2-x1)*0.7);if(anim==='b'||anim==='both'){frogAt(frogB,x1,restB);hopFrog(frogB,{x:x1,y:restB},{x:mid,y:YB+2*hh},{x:x2,y:restB},460,'frog_purple_jump.png','frog_purple.png')}else frogAt(frogB,x2,restB)}else frogAt(frogB,x(0),restB);
+  // lists
+  const box=$('#cmLists');
+  const chips=(set,cls)=>[...set].sort((p,q)=>p-q).map(v=>`<span class="nchip ${landA.has(v)&&landB.has(v)?'common'+(v===l?' lcm':''):cls}">${v}</span>`).join('')||'<span class="muted">還沒跳</span>';
+  box.innerHTML=`<div class="r"><strong class="ca">${a} 的倍數</strong>${chips(landA,'a')}${landA.size?'<span class="muted">…</span>':''}</div>
+  <div class="r"><strong class="cb">${b} 的倍數</strong>${chips(landB,'b')}${landB.size?'<span class="muted">…</span>':''}</div>
+  <div class="r"><strong class="m">公倍數</strong>${commons.length?commons.map(v=>`<span class="nchip common${v===l?' lcm':''}">${v}</span>`).join('')+'<span class="muted">…還有很多</span>':'<span class="muted">兩隻青蛙都踩到的數會出現在這裡</span>'}</div>
+  ${commons.length?`<p class="caption okc">${a} 和 ${b} 的<span class="m">最小公倍數</span>是 <span class="n m" style="font-size:26px">${l}</span>（黃框那一個）</p>`:''}`;
+  // method
+  const big=Math.max(a,b),small=Math.min(a,b);let rows='';
+  for(let k=1;k<=l/big;k++){const v=big*k,r=v%small;rows+=`<li><span class="n">${big} × ${k} = ${v}</span>　→　<span class="n">${v} ÷ ${small}</span> ${r===0?`<strong class="m">除得盡，就是它！</strong>`:`<span class="muted">有餘數，不是</span>`}</li>`}
+  $('#cmMethod').innerHTML=`<strong>例：${a} 和 ${b}</strong>　大的數是 <span class="n">${big}</span>，一個一個試：<ul>${rows}</ul>`;
+}
+renderCM();
+
+/* ---------- 4. practice ---------- */
+const LV={1:{lo:2,hi:5,k:5,lcmMax:20},2:{lo:2,hi:10,k:9,lcmMax:60},3:{lo:2,hi:15,k:10,lcmMax:120}};
+let S={mode:'auto',level:1,scaf:true,singles:[3,4,6],pairs:[[2,3],[4,6],[6,8]]};
+try{const s=JSON.parse(localStorage.getItem('mult-lesson-settings')||'null');if(s&&s.mode)S=Object.assign(S,s)}catch(e){}
+const save=()=>{try{localStorage.setItem('mult-lesson-settings',JSON.stringify(S))}catch(e){}};
+let iS=0,iP=0,lastS=0,lastP='';
+function nextSingle(){
+  if(S.mode==='custom'&&S.singles.length){return S.singles[(iS++)%S.singles.length]}
+  const L=LV[S.level];let v,t=0;do{v=rand(L.lo,L.hi)}while(v===lastS&&t++<10);lastS=v;return v;
+}
+function nextPair(){
+  if(S.mode==='custom'&&S.pairs.length){return S.pairs[(iP++)%S.pairs.length].slice()}
+  const L=LV[S.level];let a,b,t=0;
+  do{a=rand(L.lo,L.hi);b=rand(L.lo,L.hi);if(a>b)[a,b]=[b,a];t++}while((a===b||lcm(a,b)>L.lcmMax||(a+','+b)===lastP)&&t<300);
+  lastP=a+','+b;return [a,b];
+}
+const kMax=()=>S.mode==='custom'?9:LV[S.level].k;
+
+// settings UI
+function syncSettingsUI(){
+  document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===S.mode));
+  document.querySelectorAll('#levelPills .pill').forEach(b=>b.classList.toggle('on',+b.dataset.lv===S.level));
+  document.querySelectorAll('#scafSeg button').forEach(b=>b.classList.toggle('on',(b.dataset.s==='1')===!!S.scaf));
+  $('#autoBox').hidden=S.mode!=='auto';$('#customBox').hidden=S.mode!=='custom';
+  $('#cuSingles').value=S.singles.join(', ');$('#cuPairs').value=S.pairs.map(p=>p.join(',')).join('; ');
+}
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{S.mode=b.dataset.mode;iS=iP=0;save();syncSettingsUI();newQ()});
+document.querySelectorAll('#scafSeg button').forEach(b=>b.onclick=()=>{S.scaf=b.dataset.s==='1';save();syncSettingsUI();if(cur==='fill'||cur==='lcm')newQ()});
+document.querySelectorAll('#levelPills .pill').forEach(b=>b.onclick=()=>{S.level=+b.dataset.lv;save();syncSettingsUI();newQ()});
+$('#cuApply').onclick=()=>{
+  const msg=$('#cuMsg');const errs=[];
+  const singles=$('#cuSingles').value.split(/[\s,，、;；]+/).filter(Boolean).map(Number);
+  if(!singles.length||singles.some(v=>!Number.isInteger(v)||v<2||v>99))errs.push('找倍數的數字請填 2～99 的整數');
+  const pairs=[];
+  $('#cuPairs').value.split(/[;；\n]+/).map(s=>s.trim()).filter(Boolean).forEach(s=>{
+    const p=s.split(/[\s,，、和與&x×]+/).filter(Boolean).map(Number);
+    if(p.length!==2||p.some(v=>!Number.isInteger(v)||v<2||v>99)||p[0]===p[1])errs.push(`「${s}」要是兩個不同的數（2～99）`);else pairs.push(p);
+  });
+  if(!pairs.length&&!errs.length)errs.push('公倍數請至少填一組，例如：4,6');
+  if(errs.length){msg.className='msg err';msg.textContent=errs.join('；');return}
+  S.singles=singles;S.pairs=pairs;iS=iP=0;save();msg.className='msg okm';msg.textContent=`已套用：${singles.length} 個數字、${pairs.length} 組數字。`;newQ();
+};
+
+const P={
+  judge:{title:'因數還是倍數？　判斷 ○ 或 ✕'},
+  grid:{title:'點出所有的倍數'},
+  isMul:{title:'是不是倍數？'},
+  fill:{title:'倍數填空'},
+  common:{title:'找公倍數，再找最小公倍數'},
+  lcm:{title:'最小公倍數挑戰'}
+};
+let cur='judge';const score={};Object.keys(P).forEach(k=>score[k]={r:0,t:0});
+let showEq=true;
+const area=$('#pArea');
+function updScore(){$('#pScore').textContent=`答對 ${score[cur].r} / ${score[cur].t} 題`}
+function mark(ok){score[cur].t++;if(ok)score[cur].r++;updScore()}
+$('#pResetScore').onclick=()=>{score[cur]={r:0,t:0};updScore()};
+document.querySelectorAll('#ptabs .pill').forEach(b=>b.onclick=()=>{cur=b.dataset.p;syncP();newQ()});
+function syncP(){document.querySelectorAll('#ptabs .pill').forEach(b=>b.classList.toggle('on',b.dataset.p===cur));$('#pTitle').textContent=P[cur].title;updScore()}
+const PRAISE=['答對了！','太棒了！','好厲害！','完全正確！','你很會思考！'];
+function feedback(ok,html){
+  const d=document.createElement('div');d.className='feedback pop '+(ok?'okf':'badf');
+  d.innerHTML=`<div class="big">${ok?PRAISE[rand(0,PRAISE.length-1)]:'只差一點，一起來看看'}</div><div>${html}</div>`;
+  return d;
+}
+function nextBtn(){const b=document.createElement('button');b.className='btn primary';b.textContent='下一題 →';b.onclick=newQ;const w=document.createElement('div');w.className='center';w.appendChild(b);return w}
+function newQ(){area.innerHTML='';GEN[cur]();}
+
+const GEN={
+ judge(){
+  const a=nextSingle();let k=rand(2,kMax());if(k===a)k=k+1;const c=a*k;
+  const T=[[`${a} 是 ${c} 的因數`,true],[`${c} 是 ${a} 的倍數`,true],[`${k} 是 ${c} 的因數`,true],[`${c} 是 ${k} 的倍數`,true],[`${c} 是 ${a} 的因數`,false],[`${a} 是 ${c} 的倍數`,false],[`${c} 是 ${k} 的因數`,false],[`${k} 是 ${c} 的倍數`,false]];
+  const [st,ans]=T[rand(0,T.length-1)];
+  area.innerHTML=`<div class="center"><label style="font-size:16px"><input type="checkbox" id="eqTog" ${showEq?'checked':''}> 顯示乘法算式</label></div>
+   <div class="eqsmall n" id="eqLine" ${showEq?'':'hidden'}>${a} × ${k} = ${c}</div>
+   <div class="statement">${st.replace(/(\d+)/g,'<span class="n">$1</span>')}</div>
+   <div class="ox"><button data-v="1"><span class="sym">○</span>對</button><button data-v="0"><span class="sym">✕</span>錯</button></div>`;
+  $('#eqTog').onchange=e=>{showEq=e.target.checked;$('#eqLine').hidden=!showEq};
+  area.querySelectorAll('.ox button').forEach(btn=>btn.onclick=()=>{
+    area.querySelectorAll('.ox button').forEach(x=>x.disabled=true);btn.classList.add('picked');
+    const ok=(btn.dataset.v==='1')===ans;mark(ok);
+    area.appendChild(feedback(ok,`在 <span class="n">${a} × ${k} = ${c}</span> 裡，<span class="f n">${a}</span> 和 <span class="f n">${k}</span> 是 <span class="n">${c}</span> 的<span class="f">因數</span>；<span class="m n">${c}</span> 是 <span class="n">${a}</span> 和 <span class="n">${k}</span> 的<span class="m">倍數</span>。<br>所以「${st}」是 <strong>${ans?'○ 對':'✕ 錯'}</strong> 的。`));
+    area.appendChild(nextBtn());
+  });
+ },
+ grid(){
+  const n=nextSingle();const max=Math.max(30,Math.min(100,Math.ceil(n*10/10)*10));
+  area.innerHTML=`<p class="question">把 <span class="n m">${n}</span> 的倍數都點出來</p><p class="center muted">從 1 到 ${max}，點擊選取，再按一下取消</p><div class="tapgrid" id="tg"></div><div class="center"><button class="btn primary" id="tgCheck">檢查</button><button class="btn" id="tgHint">提示</button></div>`;
+  const tg=$('#tg');
+  for(let v=1;v<=max;v++){const b=document.createElement('button');b.textContent=v;b.dataset.v=v;b.onclick=()=>b.classList.toggle('sel');tg.appendChild(b)}
+  $('#tgHint').onclick=()=>{$('#tgHint').disabled=true;const h=document.createElement('p');h.className='hintbox';h.innerHTML=`從 <span class="n">${n}</span> 開始，每次加 <span class="n">${n}</span>：<span class="n m">${n}, ${2*n}, ${3*n}</span>, …`;area.insertBefore(h,$('#tgCheck').parentNode)};
+  $('#tgCheck').onclick=()=>{
+    let right=0,wrong=0,miss=0;
+    tg.querySelectorAll('button').forEach(b=>{const v=+b.dataset.v,isM=v%n===0,sel=b.classList.contains('sel');b.disabled=true;b.classList.remove('sel');
+      if(isM&&sel){b.classList.add('right');right++}else if(!isM&&sel){b.classList.add('wrong');wrong++}else if(isM){b.classList.add('miss');miss++}});
+    const ok=!wrong&&!miss;mark(ok);$('#tgCheck').disabled=true;$('#tgHint').disabled=true;
+    const all=[];for(let v=n;v<=max;v+=n)all.push(v);
+    area.appendChild(feedback(ok,ok?`<span class="n">${n}</span> 的倍數：<span class="n m">${all.join(', ')}</span>`:`找對 <span class="n">${right}</span> 個${wrong?`，多點了 <span class="n">${wrong}</span> 個（劃線的）`:''}${miss?`，還漏掉 <span class="n">${miss}</span> 個（虛線框）`:''}。<br><span class="n">${n}</span> 的倍數：<span class="n m">${all.join(', ')}</span>`));
+    area.appendChild(nextBtn());
+  };
+ },
+ isMul(){
+  const n=nextSingle();const yes=Math.random()<.5;const km=Math.max(6,kMax()+2);
+  const x=yes?n*rand(2,km):n*rand(2,km-1)+rand(1,n-1);
+  area.innerHTML=`<p class="question"><span class="n" style="font-size:1.3em">${x}</span> 是 <span class="n m" style="font-size:1.3em">${n}</span> 的倍數嗎？</p>
+   <div class="ox"><button data-v="1"><span class="sym">○</span>是</button><button data-v="0"><span class="sym">✕</span>不是</button></div>
+   <div class="center"><button class="btn" id="imHint">提示</button></div>`;
+  $('#imHint').onclick=()=>{$('#imHint').disabled=true;const h=document.createElement('p');h.className='hintbox';h.innerHTML=`算算看 <span class="n">${x} ÷ ${n}</span>，有沒有餘數？`;area.appendChild(h)};
+  area.querySelectorAll('.ox button').forEach(btn=>btn.onclick=()=>{
+    area.querySelectorAll('.ox button').forEach(b=>b.disabled=true);btn.classList.add('picked');$('#imHint').disabled=true;
+    const ok=(btn.dataset.v==='1')===yes;mark(ok);const q=Math.floor(x/n),r=x%n;
+    area.appendChild(feedback(ok,r===0?`<span class="n">${x} ÷ ${n} = ${q}</span>，沒有餘數，所以 <span class="n m">${x}</span> <strong>是</strong> <span class="n">${n}</span> 的倍數（<span class="n">${n} × ${q} = ${x}</span>）。`:`<span class="n">${x} ÷ ${n} = ${q} … ${r}</span>，有餘數，所以 <span class="n">${x}</span> <strong>不是</strong> <span class="n">${n}</span> 的倍數。`));
+    area.appendChild(nextBtn());
+  });
+ },
+ fill(){
+  const n=nextSingle();const idx=shuffle([1,2,3,4,5]).slice(0,3).sort((p,q)=>p-q);
+  const ans=i=>n*(i+1);
+  let html='';
+  for(let i=0;i<6;i++){
+    const cell=idx.includes(i)?`<input type="text" inputmode="numeric" data-ans="${ans(i)}" aria-label="第${i+1}個倍數" id="fb${i}" autocomplete="off">`:`<span class="m">${ans(i)}</span>`;
+    html+=`<div class="seqcell">${cell}<small class="kx" ${S.scaf?'':'hidden'}>${n} × ${i+1}</small></div>`;
+    if(i<5)html+=`<div class="seqjoin"><span class="muted">,</span><small class="kx" ${S.scaf?'':'hidden'}>+${n}</small></div>`;
+  }
+  area.innerHTML=`<p class="question">把 <span class="n m">${n}</span> 的倍數填完整</p>
+   <div class="blanks seq">${html}<div class="seqjoin"><span class="muted">, …</span></div></div>
+   <div id="fHelp"></div>
+   <div class="center"><button class="btn primary" id="fChk">檢查</button><button class="btn" id="fHelpBtn" ${S.scaf?'hidden':''}>需要幫忙</button></div>`;
+  let mode='add',open=false;
+  const val=i=>{if(!idx.includes(i))return ans(i);const v=$('#fb'+i).value.trim();return v===''||isNaN(+v)?null:+v};
+  const topOf=i=>mode==='add'?val(i-1):n;
+  function refreshTops(){if(!open||mode!=='add')return;area.querySelectorAll('.stepcard').forEach(c=>{const i=+c.dataset.i,t=topOf(i);c.querySelector('.top').innerHTML=t==null?'<span class="q">?</span>':t})}
+  function openHelp(){
+    open=true;$('#fHelpBtn').hidden=true;area.querySelectorAll('.kx').forEach(e=>e.hidden=false);
+    $('#fHelp').innerHTML=`<div class="helper"><div class="helper-head"><strong>計算小幫手：一格一格算</strong><div class="seg small" id="fMode"><button data-m="add" class="on">用加法</button><button data-m="mul">用乘法</button></div></div>
+      <p id="fModeTip"></p><div class="steps" id="fSteps"></div></div>`;
+    area.querySelectorAll('#fMode button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;area.querySelectorAll('#fMode button').forEach(x=>x.classList.toggle('on',x===b));drawSteps()});
+    drawSteps();
+  }
+  function drawSteps(){
+    $('#fModeTip').innerHTML=mode==='add'?`下一個倍數 ＝ 前一個倍數 ＋ <span class="n m">${n}</span>（算出來的答案會自動填到上面）`:`第幾個倍數，就乘幾：<span class="n m">${n}</span> × 第幾個（算出來的答案會自動填到上面）`;
+    const wrap=$('#fSteps');wrap.innerHTML='';
+    idx.forEach(i=>{
+      const t=topOf(i),sec=mode==='add'?n:i+1,op=mode==='add'?'+':'×';
+      const card=document.createElement('div');card.className='stepcard';card.dataset.i=i;
+      card.innerHTML=`<div class="stephead">第 <span class="n">${i+1}</span> 個</div>
+        <div class="vcalc"><span></span><span class="top">${t==null?'<span class="q">?</span>':t}</span><span class="op">${op}</span><span>${sec}</span><span class="bar"></span><input type="text" inputmode="numeric" aria-label="第${i+1}個的計算結果" autocomplete="off"></div>
+        <div class="stepmsg"></div>`;
+      const inp=card.querySelector('input'),msg=card.querySelector('.stepmsg');inp.value=$('#fb'+i).value;
+      inp.oninput=()=>{$('#fb'+i).value=inp.value;inp.classList.remove('right','wrong');msg.textContent='';refreshTops()};
+      const judge=()=>{
+        const v=inp.value.trim();if(!v)return;const top=topOf(i);
+        if(top==null){msg.className='stepmsg err';msg.textContent='請先算好前一個數';return}
+        const expect=mode==='add'?top+n:n*(i+1);
+        if(+v===expect&&expect===ans(i)){inp.classList.add('right');msg.className='stepmsg okm';msg.textContent='✓ 算對了'}
+        else if(+v===expect){inp.classList.add('wrong');msg.className='stepmsg err';msg.textContent='這一步加對了，可是前一個數好像不對，回去檢查前一個'}
+        else{inp.classList.add('wrong');msg.className='stepmsg err';msg.innerHTML=mode==='add'?`再算一次：<span class="n">${top} + ${n}</span>，可以從 <span class="n">${top}</span> 往後數 <span class="n">${n}</span> 下`:`再算一次：<span class="n">${n} × ${i+1}</span>，也可以把 <span class="n">${n}</span> 連加 <span class="n">${i+1}</span> 次`}
+      };
+      inp.onkeydown=e=>{if(e.key==='Enter')judge()};inp.onchange=judge;
+      wrap.appendChild(card);
+    });
+  }
+  idx.forEach(i=>{const s=$('#fb'+i);s.oninput=()=>{if(open){const c=area.querySelector(`.stepcard[data-i="${i}"] input`);if(c){c.value=s.value;c.classList.remove('right','wrong')}}refreshTops()}});
+  $('#fHelpBtn').onclick=openHelp;if(S.scaf)openHelp();
+  $('#fChk').onclick=()=>{
+    let ok=true;area.querySelectorAll('.blanks input').forEach(i=>{const good=i.value.trim()===i.dataset.ans;i.classList.add(good?'right':'wrong');if(!good){ok=false;i.value=i.value.trim()?i.value+' → '+i.dataset.ans:i.dataset.ans;i.style.width='130px'}i.disabled=true});
+    area.querySelectorAll('#fHelp input,#fHelp button').forEach(x=>x.disabled=true);
+    mark(ok);$('#fChk').disabled=true;$('#fHelpBtn').disabled=true;
+    const seq=[];for(let i=1;i<=6;i++)seq.push(n*i);
+    area.appendChild(feedback(ok,`<span class="n">${n}</span> 的倍數：<span class="n m">${seq.join(', ')}</span>, …（每次加 <span class="n">${n}</span>）`));
+    area.appendChild(nextBtn());
+  };
+ },
+ common(){
+  const [a,b]=nextPair();const l=lcm(a,b);let L=l*2;if(L/Math.min(a,b)>20)L=l;
+  const A=[],B=[];for(let v=a;v<=L;v+=a)A.push(v);for(let v=b;v<=L;v+=b)B.push(v);
+  const common=A.filter(v=>v%b===0);
+  area.innerHTML=`<p class="question"><span class="ca n">${a}</span> 和 <span class="cb n">${b}</span> 的公倍數有哪些？</p>
+   <p class="center muted">第一步：點出兩排都有的數（點上面或下面都可以）</p>
+   <div class="rowlist" id="cl">
+     <div class="r"><strong class="ca">${a} 的倍數</strong>${A.map(v=>`<button class="nchip a" data-v="${v}">${v}</button>`).join('')}<span class="muted">…</span></div>
+     <div class="r"><strong class="cb">${b} 的倍數</strong>${B.map(v=>`<button class="nchip b" data-v="${v}">${v}</button>`).join('')}<span class="muted">…</span></div>
+   </div>
+   <div class="center"><button class="btn primary" id="cChk">檢查</button></div>`;
+  const sel=new Set();
+  const paint=()=>area.querySelectorAll('#cl button').forEach(b=>b.classList.toggle('sel',sel.has(+b.dataset.v)));
+  area.querySelectorAll('#cl button').forEach(btn=>btn.onclick=()=>{const v=+btn.dataset.v;sel.has(v)?sel.delete(v):sel.add(v);paint()});
+  $('#cChk').onclick=()=>{
+    $('#cChk').disabled=true;let wrong=0,miss=0;
+    area.querySelectorAll('#cl button').forEach(btn=>{const v=+btn.dataset.v,isC=common.includes(v),s=sel.has(v);btn.disabled=true;btn.classList.remove('sel');
+      if(isC&&s)btn.classList.add('right');else if(s){btn.classList.add('wrong');wrong++}else if(isC){btn.classList.add('miss');miss++}});
+    wrong=[...sel].filter(v=>!common.includes(v)).length;miss=common.filter(v=>!sel.has(v)).length;
+    const ok1=!wrong&&!miss;
+    const fb=feedback(ok1,`兩排都有的數：<span class="n m">${common.join(', ')}</span>，這些就是 <span class="n">${a}</span> 和 <span class="n">${b}</span> 的<span class="m">公倍數</span>。`);area.appendChild(fb);
+    // step 2
+    const opts=new Set([l]);const cand=[a*b,common[1]||l*2,Math.max(a,b),l+Math.min(a,b),l*2];for(const c of cand){if(opts.size>=4)break;if(c!==l&&c>0)opts.add(c)}
+    const s2=document.createElement('div');s2.className='pbox';
+    s2.innerHTML=`<p class="question" style="font-size:26px">第二步：<span class="n">${a}</span> 和 <span class="n">${b}</span> 的<span class="m">最小公倍數</span>是多少？</p><div class="choices">${shuffle([...opts]).map(v=>`<button data-v="${v}">${v}</button>`).join('')}</div>`;
+    area.appendChild(s2);
+    s2.querySelectorAll('.choices button').forEach(btn=>btn.onclick=()=>{
+      s2.querySelectorAll('.choices button').forEach(x=>{x.disabled=true;if(+x.dataset.v===l)x.classList.add('right')});
+      const ok2=+btn.dataset.v===l;if(!ok2)btn.classList.add('wrong');mark(ok1&&ok2);
+      area.appendChild(feedback(ok2,`公倍數 <span class="n">${common.join(', ')}</span> 裡面，最小的是 <span class="n m" style="font-size:1.2em">${l}</span>，所以最小公倍數是 <span class="n m">${l}</span>。`));
+      area.appendChild(nextBtn());
+    });
+  };
+ },
+ lcm(){
+  const [a,b]=nextPair();const l=lcm(a,b);const big=Math.max(a,b),small=Math.min(a,b);
+  area.innerHTML=`<p class="question"><span class="ca n">${a}</span> 和 <span class="cb n">${b}</span> 的最小公倍數是多少？</p>
+   <div class="center"><input class="bigin" id="lIn" type="text" inputmode="numeric" aria-label="答案" autocomplete="off"><button class="btn primary" id="lChk">檢查</button><button class="btn" id="lHelpBtn" ${S.scaf?'hidden':''}>需要幫忙</button></div><div id="lHelp"></div>`;
+  function openHelp(){
+    $('#lHelpBtn').hidden=true;
+    const tbl=[];for(let k=1;k<=Math.max(10,Math.ceil(l/small));k++)tbl.push(small*k);
+    $('#lHelp').innerHTML=`<div class="helper">
+      <div class="helper-head"><strong>計算小幫手：從較大的數開始找</strong><button class="btn" id="lTbl" style="font-size:15px;padding:4px 12px">看 ${small} 的倍數表</button></div>
+      <p>較大的數是 <span class="n m">${big}</span>，較小的數是 <span class="n">${small}</span>。<br>① 算出 <span class="n">${big}</span> 的倍數　② 看它能不能被 <span class="n">${small}</span> 除盡　③ 第一個能除盡的，就是答案</p>
+      <div class="rowlist" id="lTblBox" hidden><div class="r"><strong>${small} 的倍數</strong>${tbl.map(v=>`<span class="nchip b">${v}</span>`).join('')}</div><p class="muted" style="font-size:16px">在這一排找得到的數，就能被 ${small} 除盡。</p></div>
+      <div class="lrows" id="lRows"></div></div>`;
+    $('#lTbl').onclick=()=>{const bx=$('#lTblBox');bx.hidden=!bx.hidden;$('#lTbl').textContent=(bx.hidden?'看 ':'收起 ')+small+' 的倍數表'};
+    addRow(1);
+  }
+  function addRow(k){
+    const v=big*k;const row=document.createElement('div');row.className='lrow pop';
+    row.innerHTML=`<div class="lstep"><span class="tagk">第 ${k} 個</span><span class="n">${big} × ${k} =</span><input type="text" inputmode="numeric" aria-label="${big} 乘 ${k} 的答案" autocomplete="off"><button class="btn" style="padding:4px 14px">確定</button></div><div class="stepmsg left"></div><div class="lstep2" hidden></div>`;
+    $('#lRows').appendChild(row);
+    const inp=row.querySelector('input'),okb=row.querySelector('.lstep button'),msg=row.querySelector('.stepmsg');
+    const go=()=>{const t=inp.value.trim();if(!t)return;
+      if(+t===v){inp.classList.remove('wrong');inp.classList.add('right');inp.disabled=true;okb.hidden=true;msg.className='stepmsg left okm';msg.textContent='✓ 算對了';step2()}
+      else{inp.classList.add('wrong');msg.className='stepmsg left err';msg.innerHTML=k>1?`再算一次：也可以用前一個 <span class="n">${big*(k-1)}</span> 再加 <span class="n">${big}</span>`:`再想想：<span class="n">${big} × 1</span> 就是它自己`}
+    };
+    okb.onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};inp.oninput=()=>inp.classList.remove('wrong');
+    if(k>1)inp.focus({preventScroll:true});
+    function step2(){
+      const s=row.querySelector('.lstep2');s.hidden=false;const q=Math.floor(v/small),r=v%small;
+      s.innerHTML=`<span class="n">${v}</span> 能被 <span class="n">${small}</span> 除盡嗎？<span class="ox2"><button data-v="1">○ 能除盡</button><button data-v="0">✕ 有餘數</button></span><div class="stepmsg left"></div>`;
+      s.querySelectorAll('.ox2 button').forEach(btn=>btn.onclick=()=>{
+        s.querySelectorAll('.ox2 button').forEach(x=>x.disabled=true);btn.classList.add('picked');
+        const yes=r===0,right=(btn.dataset.v==='1')===yes,m=s.querySelector('.stepmsg');
+        const calc=yes?`${v} ÷ ${small} = ${q}`:`${v} ÷ ${small} = ${q} … ${r}`;
+        m.className='stepmsg left '+(right?'okm':'err');
+        m.innerHTML=(right?'對！':'再看一次：')+`<span class="n">${calc}</span>，`+(yes?`除得盡！<strong class="m">${v}</strong> 就是最小公倍數，請填到上面的答案格。`:'有餘數，不是。繼續算下一個。');
+        if(yes)row.classList.add('found');else addRow(k+1);
+      });
+    }
+  }
+  $('#lHelpBtn').onclick=openHelp;if(S.scaf)openHelp();
+  const check=()=>{
+    const v=$('#lIn').value.trim();if(!v)return;$('#lIn').disabled=true;$('#lChk').disabled=true;$('#lHelpBtn').disabled=true;
+    area.querySelectorAll('#lHelp input,#lHelp .lrow button').forEach(x=>x.disabled=true);
+    const ok=+v===l;mark(ok);
+    let extra='';if(!ok&&+v>0&&+v%a===0&&+v%b===0)extra=`<br><span class="n">${v}</span> 是公倍數沒錯，但不是最小的！`;
+    const list=[];for(let k=1;k<=l/big;k++)list.push(big*k);
+    area.appendChild(feedback(ok,`<span class="n">${big}</span> 的倍數：<span class="n">${list.join(', ')}</span>，第一個能被 <span class="n">${small}</span> 除盡的是 <span class="n m" style="font-size:1.2em">${l}</span>。${extra}`));
+    area.appendChild(nextBtn());
+  };
+  $('#lChk').onclick=check;$('#lIn').onkeydown=e=>{if(e.key==='Enter')check()};
+ }
+};
+syncSettingsUI();syncP();newQ();
+})();
+</script>
+
+</body></html>

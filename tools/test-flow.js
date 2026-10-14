@@ -5,27 +5,44 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const target = process.argv[2] || path.join(__dirname, '..', 'index.html');
+const html = fs.readFileSync(target, 'utf8');
 const src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
 // ---- minimal fake DOM ----
 const reg = {};
+// Faithful stand-ins: HTMLCollection has NO forEach (only indexed access,
+// length, item() and iteration). NodeList DOES have forEach. Distinguishing the
+// two is what lets this suite catch answer()'s disable loop regression.
+const mkCollection = (arr) => {
+  const c = {
+    length: arr.length,
+    item: (i) => arr[i],
+    [Symbol.iterator]: function* () { for (let i = 0; i < arr.length; i++) yield arr[i]; },
+  };
+  for (let i = 0; i < arr.length; i++) c[i] = arr[i];
+  return c;
+};
+const mkNodeList = (arr) => Object.assign(mkCollection(arr), {
+  forEach: Array.prototype.forEach,
+});
+
 const mkNode = (tag) => {
   const n = {
     tag, id: '', className: '', disabled: false, onclick: null,
-    style: {}, _text: '', children: [],
-    classes: new Set(),
+    style: {}, _text: '', _children: [], classes: new Set(),
     classList: {
       add(c) { n.classes.add(c); },
       remove(c) { n.classes.delete(c); },
       contains(c) { return n.classes.has(c); },
     },
-    appendChild(c) { n.children.push(c); if (c && c.id) reg[c.id] = c; return c; },
-    prepend(c) { n.children.unshift(c); return c; },
-    set textContent(v) { n._text = String(v); n.children = []; },
-    get textContent() { return n._text + n.children.map((c) => c.textContent).join(''); },
+    appendChild(c) { n._children.push(c); if (c && c.id) reg[c.id] = c; return c; },
+    prepend(c) { n._children.unshift(c); return c; },
+    set textContent(v) { n._text = String(v); n._children = []; },
+    get textContent() { return n._text + n._children.map((c) => c.textContent).join(''); },
     get innerText() { return n.textContent; },
   };
+  Object.defineProperty(n, 'children', { get: () => mkCollection(n._children) });
   return n;
 };
 
@@ -42,9 +59,9 @@ const document = {
     return null;
   },
   querySelectorAll: (sel) => {
-    if (sel === '#bar span') return reg.bar.children;
-    if (sel === '#opts button') return reg.opts.children;
-    return [];
+    if (sel === '#bar span') return mkNodeList(reg.bar._children);
+    if (sel === '#opts button') return mkNodeList(reg.opts._children);
+    return mkNodeList([]);
   },
 };
 
@@ -90,7 +107,7 @@ const A = (c, m) => { if (!c) fails.push(m); };
 function answerCurrent(correct) {
   const S = api.getS();
   const q = S.q[S.i];
-  const optsBox = reg.opts.children;
+  const optsBox = [...reg.opts.children];
   if (optsBox.length !== 4) fails.push(`expected 4 options, got ${optsBox.length}`);
   const pick = correct ? q.ans : '__wrong__';
   const btn = optsBox.find((b) => b.textContent === pick) || null;
@@ -99,7 +116,6 @@ function answerCurrent(correct) {
 
 // --- round 1: 6 correct, 4 wrong ---
 api.startGame();
-const S1 = api.getS();
 A(reg.tot.textContent === '10', `tot should be 10, got ${reg.tot.textContent}`);
 A(reg.bar.children.length === 10, `bar should have 10 dots, got ${reg.bar.children.length}`);
 A(reg.num.textContent === '1', `num should be 1, got ${reg.num.textContent}`);
@@ -119,16 +135,16 @@ A(overText.includes('要溫習嘅題目（4 題）'), 'results missing wrong-que
 A(overText.includes('✅ 答案：'), 'results missing answers to review');
 A(store.p4div === '60', `best score should be 60, got ${store.p4div}`);
 
-const wrongBox = over.children.find((c) => c.id === 'wrong');
+const wrongBox = [...over.children].find((c) => c.id === 'wrong');
 A(!!wrongBox, 'expected a #wrong review block');
 if (wrongBox) {
   // block = [bold heading, row, row, row, row]
   A(wrongBox.children.length === 5, `#wrong should hold 4 rows + heading, got ${wrongBox.children.length}`);
 }
-const mark = over.children.find((c) => c.id === 'mark');
+const mark = [...over.children].find((c) => c.id === 'mark');
 A(!!mark && mark.textContent === '6/10', `expected #mark = 6/10`);
 
-const buttons = over.children.filter((c) => c.tag === 'button');
+const buttons = [...over.children].filter((c) => c.tag === 'button');
 A(buttons.length === 2, `round 1 should offer 2 buttons (again + more), got ${buttons.length}`);
 A(buttons.some((b) => b.textContent.includes('再考一次')), 'missing 再考一次 button');
 const moreBtn = buttons.find((b) => b.textContent.includes('加考'));
@@ -146,7 +162,7 @@ while (api.getS().i < api.getS().done) answerCurrent(true);
 const over2 = reg.over;
 A(over2.textContent.includes('16/20'), `final score should be 16/20: ${over2.textContent.slice(0, 160)}`);
 A(store.p4div === '80', `best score should update to 80, got ${store.p4div}`);
-const buttons2 = over2.children.filter((c) => c.tag === 'button');
+const buttons2 = [...over2.children].filter((c) => c.tag === 'button');
 A(buttons2.length === 1, `at 20/20 the 加考 button must be gone, got ${buttons2.length}`);
 
 // --- a perfect round shows the all-correct message ---
@@ -162,9 +178,18 @@ console.log(`  round 2: 加考 to 20 -> tot/bar/counts updated OK`);
 console.log(`  perfect round -> all-correct message OK`);
 console.log(`  best score tracking: 60 -> 80 OK`);
 
+// --- static guard: HTMLCollection has no Array methods ---
+// `el.children.forEach(...)` throws where HTMLCollection is not array-like.
+// Spread it first: [...el.children].
+const badColl = src.match(/\.children\.(forEach|map|filter|find|reduce|some|every)\s*\(/);
+if (badColl) {
+  const line = src.slice(0, badColl.index).split('\n').length;
+  fails.push(`index.html:${line} calls .${badColl[1]}() on .children (HTMLCollection) — spread it: [...el.children].${badColl[1]}()`);
+}
+
 if (fails.length) {
-  console.log(`\nFAIL — ${fails.length} problem(s):`);
+  console.log(`\nFAIL — ${fails.length} problem(s) in ${target}:`);
   [...new Set(fails)].forEach((f) => console.log('  - ' + f));
   process.exit(1);
 }
-console.log('\nPASS — full game flow renders correctly');
+console.log(`\nPASS — full game flow renders correctly (${target})`);
